@@ -1,0 +1,35 @@
+publiccodeYmlVersion: 0.5.0
+name: jeap-cli
+applicationSuite: jEAP
+softwareVersion: 0.1.0
+releaseDate: 2025-11-11
+url: "https://github.com/jeap-admin-ch/jeap-cli.git"
+landingURL: "https://github.com/jeap-admin-ch/jeap"
+platforms:
+  - web
+categories:
+  - application-development
+developmentStatus: stable
+softwareType: library
+description:
+  en:
+    localisedName: jeap-cli
+    shortDescription: A CLI for managing apps based on jEAP (migrations, initializers, etc.)
+    longDescription: >
+      jeap-cli is a command-line interface tool designed to streamline the management of applications built using the
+      jEAP framework. It provides functionalities for version migrations, initializing new projects, and other
+      essential tasks to facilitate efficient application development and maintenance.
+    features:
+      - Provides a CLI for managing jEAP-based applications
+      - Supports version migrations and project initialization
+legal:
+  license: Apache-2.0
+maintenance:
+  type: internal
+  contacts:
+    - name: Federal Office of Information Technology, Systems and Telecommunication FOITT
+      email: jeap-community@bit.admin.ch
+localisation:
+  localisationReady: false
+  availableLanguages:
+    - en
