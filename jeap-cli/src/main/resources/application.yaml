@@ -1,10 +1,15 @@
 spring:
   config:
-    import: "optional:classpath:META-INF/build-info.properties"
+    import: "classpath:META-INF/build-info.properties"
   application:
     name: jeap-cli
   main:
     banner-mode: console
   banner:
-    location: banner/cli-banner.txt
+    location: "classpath:banner/cli-banner.txt"
 
+logging:
+  pattern:
+    console: "%-5level %msg%n"
+  level:
+    ch.admin.bit.jeap.cli.JeapCLI: warn # Hide Spring Boot startup logs

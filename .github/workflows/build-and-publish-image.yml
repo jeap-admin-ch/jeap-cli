@@ -1,0 +1,201 @@
+name: Build and publish CLI image
+
+on:
+  push:
+    branches: [ "main", "feature/**" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push-cli-image:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # needed for tags & changelog
+
+      - name: Set up GraalVM
+        uses: graalvm/setup-graalvm@v1
+        with:
+          java-version: '25'
+          distribution: 'graalvm'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          cache: maven
+
+      # Read the POM version as-checked-out (may be x.y.z-SNAPSHOT)
+      - name: Read original version
+        id: orig
+        run: |
+          echo "version=$(./mvnw -q -Dexec.executable=echo -Dexec.args='${project.version}' --non-recursive exec:exec)" >> $GITHUB_OUTPUT
+
+      # If on main, create a temporary release version without -SNAPSHOT)
+      - name: Prepare effective build version
+        id: ver
+        run: |
+          set -euo pipefail
+          ORIG="${{ steps.orig.outputs.version }}"
+          BRANCH="${GITHUB_REF##*/}"
+          REL="${ORIG%-SNAPSHOT}"
+          echo "strip -SNAPSHOT on main: $ORIG -> $REL"
+          ./mvnw -q versions:set -DnewVersion="$REL" -DgenerateBackupPoms=false
+          echo "version=$REL" >> $GITHUB_OUTPUT
+
+      # Fail if a git tag for this version already exists
+      - name: Ensure version tag does not already exist
+        if: github.ref == 'refs/heads/main'
+        run: |
+          set -euo pipefail
+          git fetch --tags --force
+          TAG="${{ steps.ver.outputs.version }}"
+          if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
+            echo "Error: tag '${TAG}' already exists. Bump the project version before releasing."
+            exit 1
+          fi
+
+      - name: Show Java & GraalVM versions
+        run: |
+          java -version
+
+      - name: Build native binary (linux/amd64)
+        run: ./mvnw -B -Pnative package
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build Container Image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./jeap-cli
+          platforms: linux/amd64
+          # Push only on main; feature branches build only
+          push: ${{ github.ref == 'refs/heads/main' }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.ver.outputs.version }}
+            ${{ github.ref == 'refs/heads/main' && format('{0}/{1}:latest', env.REGISTRY, env.IMAGE_NAME) || '' }}
+
+      # Find previous tag (before a new one is created) for changelog
+      - name: Determine previous tag
+        if: github.ref == 'refs/heads/main'
+        id: prev
+        run: |
+          set -euo pipefail
+          git fetch --tags --force
+          # Try semantic sort first, fall back to most recent by date
+          PREV="$(git tag --sort=-version:refname | head -n 1 || true)"
+          if [ -z "$PREV" ]; then
+            PREV="$(git for-each-ref --sort=-creatordate --format '%(refname:short)' refs/tags | head -n 1 || true)"
+          fi
+          echo "prev_tag=$PREV" >> "$GITHUB_OUTPUT"
+
+      # Create git tag for released version and push it
+      - name: Create and push git tag
+        if: github.ref == 'refs/heads/main'
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.ver.outputs.version }}"
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor }}@users.noreply.github.com"
+          git tag -a "$TAG" -m "Release $TAG"
+          git push origin "$TAG"
+
+      # Resolve GHCR package page and the specific *version* page (org-scoped)
+      - name: Get GHCR version URL
+        if: github.ref == 'refs/heads/main'
+        id: pkg
+        uses: actions/github-script@v8
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        with:
+          script: |
+            const owner = context.repo.owner;                   // "jeap-admin-ch"
+            const package_name = context.repo.repo.toLowerCase(); // "jeap-cli"
+            const wantedTag = process.env.VERSION;              // "x.y.z" (no "v" prefix)
+            
+            // Fetch the container package under the ORG
+            const pkg = await github.request(
+              "GET /orgs/{org}/packages/{package_type}/{package_name}",
+              {
+                org: owner,
+                package_type: "container",
+                package_name
+              }
+            );
+            
+            // List all versions and find the one that carries the desired tag
+            const versions = await github.paginate(
+              "GET /orgs/{org}/packages/{package_type}/{package_name}/versions",
+              {
+                org: owner,
+                package_type: "container",
+                package_name,
+                per_page: 100
+              }
+            );
+            
+            const match = versions.find(v =>
+              (v?.metadata?.container?.tags || []).includes(wantedTag)
+            );
+            
+            core.setOutput("package_url", pkg.data.html_url || "");
+            core.setOutput("version_url", match?.html_url || "");
+
+      # Generate release notes with link and changelog since previous tag
+      - name: Generate release notes
+        if: github.ref == 'refs/heads/main'
+        id: notes
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.ver.outputs.version }}"
+          PREV="${{ steps.prev.outputs.prev_tag }}"
+          IMAGE_REF="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${VERSION}"
+          PKG_URL="${{ steps.pkg.outputs.package_url }}"
+          PKG_VER_URL="${{ steps.pkg.outputs.version_url }}?tag=${VERSION}"
+          {
+            echo "# Release ${VERSION}"
+            echo
+            echo "Container image:"
+            echo
+            echo "\`${IMAGE_REF}\`"
+            echo
+            if [ -n "$PKG_VER_URL" ]; then
+              echo "[View this version on GitHub Packages](${PKG_VER_URL})"
+            elif [ -n "$PKG_URL" ]; then
+              echo "[View package on GitHub Packages](${PKG_URL})"
+            fi
+            echo
+            if [ -n "$PREV" ]; then
+              echo "## Changelog since \`${PREV}\`"
+              echo
+              git log --no-merges --pretty=format:'- %s (%h)' "${PREV}..HEAD" || true
+            else
+              echo "## Changelog"
+              echo
+              git log --no-merges --pretty=format:'- %s (%h)' || true
+            fi
+            echo
+          } > RELEASE_NOTES.md
+          echo "body_path=RELEASE_NOTES.md" >> $GITHUB_OUTPUT
+
+      # Publish GitHub release for this version with notes
+      - name: Create GitHub release
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.version }}
+          name: ${{ steps.ver.outputs.version }}
+          body_path: ${{ steps.notes.outputs.body_path }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
