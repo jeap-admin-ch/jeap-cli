@@ -1,5 +1,10 @@
 spring:
+  config:
+    import: "optional:classpath:META-INF/build-info.properties"
   application:
     name: jeap-cli
   main:
-    banner-mode: off
+    banner-mode: console
+  banner:
+    location: banner/cli-banner.txt
+

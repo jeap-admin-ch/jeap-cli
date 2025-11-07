@@ -2,7 +2,7 @@ publiccodeYmlVersion: 0.4.0
 name: jeap-cli
 applicationSuite: jEAP
 softwareVersion: 0.0.1
-releaseDate: 2025-11-06
+releaseDate: 2025-11-07
 url: "https://github.com/jeap-admin-ch/jeap-cli.git"
 landingURL: "https://github.com/jeap-admin-ch/jeap"
 platforms:
