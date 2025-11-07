@@ -14,7 +14,7 @@ jeapBuildPipeline(
             systemIntegrationTest: false,
             deployStage          : null,
             nextStage            : null,
-            // TODO additionalMavenArgs  : '-P maven-central-publish'
+            // TODO additionalMavenArgs  : '-P maven-central-publish' // Enable maven central publication when ready
         ],
         FEATURE: [
             integrationTest     : true,
