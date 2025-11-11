@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+IMAGE="ghcr.io/jeap-admin-ch/jeap-cli:latest"
+MARKER_DIR="$HOME/.jeap"
+MARKER_FILE="$MARKER_DIR/.cli-update"  # Update marker file
+CHECK_WINDOW_SEC=$((2*24*60*60))       # 2 days in seconds
+
+die() { echo "Error: $*" >&2; exit 1; }
+
+# 0) Preconditions
+command -v docker >/dev/null 2>&1 || die "docker is not installed or not on PATH"
+mkdir -p "$MARKER_DIR"
+
+# 1) Ensure image exists locally (pull if missing)
+if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
+  echo "Docker image not found locally. Pulling $IMAGE ..."
+  docker pull "$IMAGE"
+  touch "$MARKER_FILE"
+else
+  # 2) If last pull/refresh is older than 2 days (based on marker), refresh
+  needs_refresh=false
+  if [[ ! -f "$MARKER_FILE" ]]; then
+    needs_refresh=true
+  else
+    now=$(date +%s)
+    last=$(stat -c %Y "$MARKER_FILE")
+    elapsed=$((now - last))
+    if (( elapsed >= CHECK_WINDOW_SEC )); then
+      needs_refresh=true
+    fi
+  fi
+
+  if $needs_refresh; then
+    docker pull "$IMAGE"
+    touch "$MARKER_FILE"
+  fi
+fi
+
+# 3) Start the CLI with default entrypoint, mounting current dir to /workspace
+WORKDIR="$(pwd)"
+DOCKER_MOUNTS=("-v" "$WORKDIR:/workspace")
+
+# Mount maven config and local repository
+if [[ -d "$HOME/.m2" ]]; then
+  DOCKER_MOUNTS+=("-v" "$HOME/.m2:/home/jeapcli/.m2")
+fi
+
+# Mount npm config and caches
+if [[ -f "$HOME/.npmrc" ]]; then
+  DOCKER_MOUNTS+=("-v" "$HOME/.npmrc:/home/jeapcli/.npmrc")
+fi
+if [[ -d "$HOME/.npm" ]]; then
+  DOCKER_MOUNTS+=("-v" "$HOME/.npm:/home/jeapcli/.npm")
+fi
+if [[ -d "$HOME/.config/npm" ]]; then
+  DOCKER_MOUNTS+=("-v" "$HOME/.config/npm:/home/jeapcli/.config/npm")
+fi
+
+exec docker run --rm "${DOCKER_TTY_OPTS[@]}" \
+   "${DOCKER_MOUNTS[@]}" \
+  -w /workspace \
+  "$IMAGE" \
+  "$@"
