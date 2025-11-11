@@ -44,7 +44,7 @@ jobs:
           ORIG="${{ steps.orig.outputs.version }}"
           BRANCH="${GITHUB_REF##*/}"
           REL="${ORIG%-SNAPSHOT}"
-          echo "strip -SNAPSHOT on main: $ORIG -> $REL"
+          echo "Set version to $REL"
           ./mvnw -q versions:set -DnewVersion="$REL" -DgenerateBackupPoms=false
           echo "version=$REL" >> $GITHUB_OUTPUT
 
