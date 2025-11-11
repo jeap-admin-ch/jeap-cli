@@ -40,7 +40,7 @@
     <artifactId>jeap-cli-parent</artifactId>
     <name>${project.groupId}:${project.artifactId}</name>
     <description>jEAP CLI Parent</description>
-    <version>0.0.7-SNAPSHOT</version>
+    <version>0.0.1-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <modules>
