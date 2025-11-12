@@ -134,9 +134,13 @@
                                     <enabled>true</enabled>
                                 </metadataRepository>
                                 <buildArgs>
+                                    <buildArg>-H:+UnlockExperimentalVMOptions</buildArg>
                                     <buildArg>-H:+ReportExceptionStackTraces</buildArg>
                                     <buildArg>-H:IncludeResources=banner/.*</buildArg>
                                     <buildArg>-H:Log=registerResource</buildArg>
+                                    <buildArg>--gc=G1</buildArg>
+                                    <buildArg>--future-defaults=all</buildArg>
+                                    <buildArg>-march=native</buildArg>
                                 </buildArgs>
                             </configuration>
                             <executions>
