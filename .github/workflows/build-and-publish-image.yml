@@ -119,18 +119,8 @@ jobs:
         with:
           script: |
             const owner = context.repo.owner;                     // "jeap-admin-ch"
-            const package_name = context.repo.repo.toLowerCase(); // "jeap-cli"
-            const wantedTag = process.env.VERSION;                // "x.y.z" (no "v" prefix)
-            
-            // Fetch the container package under the ORG
-            const pkg = await github.request(
-              "GET /orgs/{org}/packages/{package_type}/{package_name}",
-              {
-                org: owner,
-                package_type: "container",
-                package_name
-              }
-            );
+            const package_name = context.repo.repo.toLowerCase();     // "jeap-cli"
+            const wantedTag = "${{ steps.version.outputs.version }}";
             
             // List all versions and find the one that carries the desired tag
             const versions = await github.paginate(
@@ -147,7 +137,6 @@ jobs:
               (v?.metadata?.container?.tags || []).includes(wantedTag)
             );
             
-            core.setOutput("package_url", pkg.data.html_url || "");
             core.setOutput("version_url", match?.html_url || "");
 
       # Generate release notes with link and changelog since previous tag
@@ -159,7 +148,6 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           PREV="${{ steps.previoustag.outputs.prev_tag }}"
           IMAGE_REF="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${VERSION}"
-          PKG_URL="${{ steps.ghpackages.package_url }}"
           PKG_VER_URL="${{ steps.ghpackages.version_url }}?tag=${VERSION}"
           {
             echo "# Release ${VERSION}"
@@ -170,8 +158,6 @@ jobs:
             echo
             if [ -n "$PKG_VER_URL" ]; then
               echo "[View this version on GitHub Packages](${PKG_VER_URL})"
-            elif [ -n "$PKG_URL" ]; then
-              echo "[View package on GitHub Packages](${PKG_URL})"
             fi
             echo
             if [ -n "$PREV" ]; then
