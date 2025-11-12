@@ -23,4 +23,4 @@ sudo mv "$TMP_FILE" "$INSTALL_DIR/$SCRIPT_NAME"
 echo "✅ Installed successfully: $INSTALL_DIR/$SCRIPT_NAME"
 echo "You can now run it using: $SCRIPT_NAME [args]"
 
-jeap help
+${INSTALL_DIR}/${SCRIPT_NAME} help

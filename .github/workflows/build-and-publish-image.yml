@@ -64,7 +64,7 @@ jobs:
           java -version
 
       - name: Maven Build
-        run: ./mvnw -B -Pnative package
+        run: ./mvnw -B -ntp -Pnative package
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -111,32 +111,32 @@ jobs:
 
       # Resolve GHCR package page and the specific version page (org-scoped)
       - name: Get GitHub Container Registry Version URL
-        if: github.ref == 'refs/heads/main'
         id: ghpackages
         uses: actions/github-script@v8
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
         with:
           script: |
-            const owner = context.repo.owner;                     // "jeap-admin-ch"
-            const package_name = context.repo.repo.toLowerCase();     // "jeap-cli"
             const wantedTag = "${{ steps.version.outputs.version }}";
+            console.log(`Looking for GHCR version with tag: ${wantedTag}`);
             
             // List all versions and find the one that carries the desired tag
             const versions = await github.paginate(
-              "GET /orgs/{org}/packages/{package_type}/{package_name}/versions",
+              "GET /orgs/jeap-admin-ch/packages/container/jeap-cli/versions",
               {
-                org: owner,
-                package_type: "container",
-                package_name,
                 per_page: 100
               }
             );
             
-            const match = versions.find(v =>
-              (v?.metadata?.container?.tags || []).includes(wantedTag)
-            );
+            console.log(`Found ${versions.length} GHCR versions`);
             
+            const match = versions.find(v => {
+              console.log(`Checking version: ${v.id} with tags: ${v?.metadata?.container?.tags || []}`);
+              console.log(`Looking for tag: ${wantedTag}`);
+              const hasMatchingTag = (v?.metadata?.container?.tags || []).includes(wantedTag)
+              console.log(`Has matching tag: ${hasMatchingTag}`);
+              return hasMatchingTag
+            });
+            
+            console.log(`Resolved GHCR version URL: ${match?.html_url || "NOT FOUND"}`);
             core.setOutput("version_url", match?.html_url || "");
 
       # Generate release notes with link and changelog since previous tag
