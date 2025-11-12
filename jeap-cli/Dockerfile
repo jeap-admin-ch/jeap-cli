@@ -5,6 +5,7 @@ LABEL org.opencontainers.image.description="jEAP CLI Container Image (https://gi
 RUN useradd -r -u 1001 -m -d /home/jeapcli jeapcli
 
 ENV HOME=/home/jeapcli
+ENV JAVA_TOOL_OPTIONS="--enable-native-access=ALL-UNNAMED"
 
 COPY target/jeap-cli /app/jeap-cli
 
