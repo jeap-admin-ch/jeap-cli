@@ -31,30 +31,29 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           cache: maven
 
-      - name: Read pom version
-        id: orig
+      - name: Read Project Version
+        id: pomversion
         run: |
           echo "version=$(./mvnw -q -Dexec.executable=echo -Dexec.args='${project.version}' --non-recursive exec:exec)" >> $GITHUB_OUTPUT
 
       # If on main, create a release version without -SNAPSHOT
-      - name: Set release version
-        id: ver
+      - name: Set Release Version
+        id: version
         run: |
           set -euo pipefail
-          ORIG="${{ steps.orig.outputs.version }}"
-          BRANCH="${GITHUB_REF##*/}"
-          REL="${ORIG%-SNAPSHOT}"
+          pomversion="${{ steps.pomversion.outputs.version }}"
+          REL="${pomversion%-SNAPSHOT}"
           echo "Set version to $REL"
           ./mvnw -q versions:set -DnewVersion="$REL" -DgenerateBackupPoms=false
           echo "version=$REL" >> $GITHUB_OUTPUT
 
       # Fail if a git tag for this version already exists
-      - name: Ensure version tag does not already exist
+      - name: Ensure Version Tag does not Already Exist
         if: github.ref == 'refs/heads/main'
         run: |
           set -euo pipefail
           git fetch --tags --force
-          TAG="${{ steps.ver.outputs.version }}"
+          TAG="${{ steps.version.outputs.version }}"
           if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
             echo "Error: tag '${TAG}' already exists. Bump the project version before releasing."
             exit 1
@@ -64,7 +63,7 @@ jobs:
         run: |
           java -version
 
-      - name: Build native binary (linux/amd64)
+      - name: Maven Build
         run: ./mvnw -B -Pnative package
 
       - name: Log in to GitHub Container Registry
@@ -82,13 +81,13 @@ jobs:
           # Push only on main; feature branches build only
           push: ${{ github.ref == 'refs/heads/main' }}
           tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.ver.outputs.version }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}
             ${{ github.ref == 'refs/heads/main' && format('{0}/{1}:latest', env.REGISTRY, env.IMAGE_NAME) || '' }}
 
       # Find previous tag (before a new one is created) for changelog
-      - name: Determine previous tag
+      - name: Determine Previous Tag
         if: github.ref == 'refs/heads/main'
-        id: prev
+        id: previoustag
         run: |
           set -euo pipefail
           git fetch --tags --force
@@ -100,23 +99,23 @@ jobs:
           echo "prev_tag=$PREV" >> "$GITHUB_OUTPUT"
 
       # Create git tag for released version and push it
-      - name: Create and push git tag
+      - name: Create and Push Git Tag
         if: github.ref == 'refs/heads/main'
         run: |
           set -euo pipefail
-          TAG="${{ steps.ver.outputs.version }}"
+          TAG="${{ steps.version.outputs.version }}"
           git config user.name "${{ github.actor }}"
           git config user.email "${{ github.actor }}@users.noreply.github.com"
           git tag -a "$TAG" -m "Release $TAG"
           git push origin "$TAG"
 
       # Resolve GHCR package page and the specific version page (org-scoped)
-      - name: Get GitHub Container Registry version URL
+      - name: Get GitHub Container Registry Version URL
         if: github.ref == 'refs/heads/main'
-        id: pkg
+        id: ghpackages
         uses: actions/github-script@v8
         env:
-          VERSION: ${{ steps.ver.outputs.version }}
+          VERSION: ${{ steps.version.outputs.version }}
         with:
           script: |
             const owner = context.repo.owner;                     // "jeap-admin-ch"
@@ -152,16 +151,16 @@ jobs:
             core.setOutput("version_url", match?.html_url || "");
 
       # Generate release notes with link and changelog since previous tag
-      - name: Generate release notes
+      - name: Generate Release Notes
         if: github.ref == 'refs/heads/main'
-        id: notes
+        id: releasenotes
         run: |
           set -euo pipefail
-          VERSION="${{ steps.ver.outputs.version }}"
-          PREV="${{ steps.prev.outputs.prev_tag }}"
+          VERSION="${{ steps.version.outputs.version }}"
+          PREV="${{ steps.previoustag.outputs.prev_tag }}"
           IMAGE_REF="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${VERSION}"
-          PKG_URL="${{ steps.pkg.outputs.package_url }}"
-          PKG_VER_URL="${{ steps.pkg.outputs.version_url }}?tag=${VERSION}"
+          PKG_URL="${{ steps.ghpackages.package_url }}"
+          PKG_VER_URL="${{ steps.ghpackages.version_url }}?tag=${VERSION}"
           {
             echo "# Release ${VERSION}"
             echo
@@ -189,12 +188,12 @@ jobs:
           echo "body_path=RELEASE_NOTES.md" >> $GITHUB_OUTPUT
 
       # Publish GitHub release for this version with notes
-      - name: Create GitHub release
+      - name: Create GitHub Release
         if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.ver.outputs.version }}
-          name: ${{ steps.ver.outputs.version }}
-          body_path: ${{ steps.notes.outputs.body_path }}
+          tag_name: ${{ steps.version.outputs.version }}
+          name: ${{ steps.version.outputs.version }}
+          body_path: ${{ steps.releasenotes.outputs.body_path }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
