@@ -8,6 +8,12 @@ CHECK_WINDOW_SEC=$((2*24*60*60))       # 2 days in seconds
 
 die() { echo "Error: $*" >&2; exit 1; }
 
+# enable -it only when interactive
+DOCKER_TTY_OPTS=()
+if [[ -t 0 && -t 1 ]]; then
+  DOCKER_TTY_OPTS+=("-it")
+fi
+
 # 0) Preconditions
 command -v docker >/dev/null 2>&1 || die "docker is not installed or not on PATH"
 mkdir -p "$MARKER_DIR"
@@ -39,11 +45,11 @@ fi
 
 # 3) Start the CLI with default entrypoint, mounting current dir to /workspace
 WORKDIR="$(pwd)"
-DOCKER_MOUNTS=("-v" "$WORKDIR:/workspace")
+DOCKER_MOUNTS=("-v" "$WORKDIR:/workspace:rw")
 
 # Mount maven config and local repository
 if [[ -d "$HOME/.m2" ]]; then
-  DOCKER_MOUNTS+=("-v" "$HOME/.m2:/home/jeapcli/.m2")
+  DOCKER_MOUNTS+=("-v" "$HOME/.m2:/home/jeapcli/.m2:rw")
 fi
 
 # Mount npm config and caches
@@ -51,14 +57,20 @@ if [[ -f "$HOME/.npmrc" ]]; then
   DOCKER_MOUNTS+=("-v" "$HOME/.npmrc:/home/jeapcli/.npmrc")
 fi
 if [[ -d "$HOME/.npm" ]]; then
-  DOCKER_MOUNTS+=("-v" "$HOME/.npm:/home/jeapcli/.npm")
+  DOCKER_MOUNTS+=("-v" "$HOME/.npm:/home/jeapcli/.npm:rw")
 fi
 if [[ -d "$HOME/.config/npm" ]]; then
-  DOCKER_MOUNTS+=("-v" "$HOME/.config/npm:/home/jeapcli/.config/npm")
+  DOCKER_MOUNTS+=("-v" "$HOME/.config/npm:/home/jeapcli/.config/npm:rw")
 fi
 
+# Pass user UID/GID to be able to write to workspace files
+MY_UID=$(id -u)
+MY_GID=$(id -g)
+DOCKER_USER_OPTS=(--user "${MY_UID}:${MY_GID}")
+
 exec docker run --rm "${DOCKER_TTY_OPTS[@]}" \
-   "${DOCKER_MOUNTS[@]}" \
+  "${DOCKER_USER_OPTS[@]}" \
+  "${DOCKER_MOUNTS[@]}" \
   -w /workspace \
   "$IMAGE" \
   "$@"
