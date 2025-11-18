@@ -138,8 +138,9 @@
                                     <buildArg>-H:+ReportExceptionStackTraces</buildArg>
                                     <buildArg>-H:IncludeResources=banner/.*</buildArg>
                                     <buildArg>-H:Log=registerResource</buildArg>
-                                    <buildArg>--future-defaults=all</buildArg>
                                     <buildArg>-march=compatibility</buildArg>
+                                    <buildArg>--future-defaults=all</buildArg>
+                                    <buildArg>--enable-native-access=ALL-UNNAMED</buildArg>
                                 </buildArgs>
                             </configuration>
                             <executions>

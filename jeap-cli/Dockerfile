@@ -13,4 +13,5 @@ RUN chmod +x /app/jeap-cli && ln -s /app/jeap-cli /usr/local/bin/jeap-cli
 
 USER jeapcli
 
-ENTRYPOINT ["/app/jeap-cli"]
+# org.jline.terminal.dumb disables the warning in case a terminal is not detected (https://github.com/jline/jline3/issues/291)
+ENTRYPOINT ["/app/jeap-cli", "-Dorg.jline.terminal.dumb=true"]
