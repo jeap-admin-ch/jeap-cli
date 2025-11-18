@@ -63,6 +63,11 @@ if [[ -d "$HOME/.config/npm" ]]; then
   DOCKER_MOUNTS+=("-v" "$HOME/.config/npm:/home/jeapcli/.config/npm:rw")
 fi
 
+# Mount JVM cacerts if available
+if [[ -f "/etc/ssl/certs/java/cacerts" ]]; then
+  DOCKER_MOUNTS+=("-v" "/etc/ssl/certs/java/cacerts:/hostcacerts")
+fi
+
 # Pass user UID/GID to be able to write to workspace files
 MY_UID=$(id -u)
 MY_GID=$(id -g)
