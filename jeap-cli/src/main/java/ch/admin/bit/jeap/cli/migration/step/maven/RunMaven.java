@@ -2,7 +2,6 @@ package ch.admin.bit.jeap.cli.migration.step.maven;
 
 import ch.admin.bit.jeap.cli.migration.step.Step;
 import ch.admin.bit.jeap.cli.process.ProcessExecutor;
-import ch.admin.bit.jeap.cli.process.SystemProcessExecutor;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -30,30 +29,10 @@ public class RunMaven implements Step {
      * @param mavenArgs        the Maven command line arguments (e.g., ["clean", "install"])
      * @param processExecutor  the process executor to use for running Maven
      */
-    public RunMaven(Path workingDirectory, List<String> mavenArgs, ProcessExecutor processExecutor) {
+    public RunMaven(Path workingDirectory, ProcessExecutor processExecutor, String... mavenArgs) {
         this.workingDirectory = workingDirectory;
-        this.mavenArgs = List.copyOf(mavenArgs);
+        this.mavenArgs = List.of(mavenArgs);
         this.processExecutor = processExecutor;
-    }
-
-    /**
-     * Creates a new RunMaven step.
-     *
-     * @param workingDirectory the directory where Maven should be executed (typically the project root)
-     * @param mavenArgs        the Maven command line arguments (e.g., ["clean", "install"])
-     */
-    public RunMaven(Path workingDirectory, List<String> mavenArgs) {
-        this(workingDirectory, mavenArgs, new SystemProcessExecutor());
-    }
-
-    /**
-     * Creates a new RunMaven step with a single Maven goal.
-     *
-     * @param workingDirectory the directory where Maven should be executed (typically the project root)
-     * @param mavenArgs        the Maven command line arguments (varargs)
-     */
-    public RunMaven(Path workingDirectory, String... mavenArgs) {
-        this(workingDirectory, List.of(mavenArgs), new SystemProcessExecutor());
     }
 
     @Override

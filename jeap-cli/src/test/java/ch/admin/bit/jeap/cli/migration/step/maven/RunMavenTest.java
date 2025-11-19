@@ -20,7 +20,7 @@ class RunMavenTest {
     void testSuccessfulMavenExecution() throws Exception {
         // Given a fake process executor that returns success
         FakeProcessExecutor fakeExecutor = new FakeProcessExecutor(0);
-        Step runMaven = new RunMaven(tempDir, List.of("clean", "install"), fakeExecutor);
+        Step runMaven = new RunMaven(tempDir, fakeExecutor, "install");
 
         // When executing the step
         runMaven.execute();
@@ -30,7 +30,7 @@ class RunMavenTest {
                 "Should have executed one command");
 
         FakeProcessExecutor.ExecutedCommand executed = fakeExecutor.getLastExecutedCommand();
-        assertEquals(List.of("mvn", "clean", "install"), executed.command(),
+        assertEquals(List.of("mvn", "install"), executed.command(),
                 "Should have executed mvn with correct arguments");
         assertEquals(tempDir, executed.workingDirectory(),
                 "Should have executed in correct directory");
@@ -40,7 +40,7 @@ class RunMavenTest {
     void testFailedMavenExecution() {
         // Given a fake process executor that returns failure
         FakeProcessExecutor fakeExecutor = new FakeProcessExecutor(1);
-        Step runMaven = new RunMaven(tempDir, List.of("test"), fakeExecutor);
+        Step runMaven = new RunMaven(tempDir, fakeExecutor, "test");
 
         // When executing the step
         // Then it should throw an IOException
@@ -57,35 +57,34 @@ class RunMavenTest {
     void testMavenExecutionWithMultipleArguments() throws Exception {
         // Given a fake process executor
         FakeProcessExecutor fakeExecutor = new FakeProcessExecutor(0);
-        Step runMaven = new RunMaven(tempDir, List.of("clean", "package", "-DskipTests"), fakeExecutor);
+        Step runMaven = new RunMaven(tempDir, fakeExecutor, "package", "-DskipTests");
 
         // When executing the step
         runMaven.execute();
 
         // Then the command should include all arguments
         FakeProcessExecutor.ExecutedCommand executed = fakeExecutor.getLastExecutedCommand();
-        assertEquals(List.of("mvn", "clean", "package", "-DskipTests"), executed.command(),
+        assertEquals(List.of("mvn", "package", "-DskipTests"), executed.command(),
                 "Should have executed mvn with all arguments");
     }
 
     @Test
     void testVarargsConstructorCreatesCorrectCommand() throws Exception {
         // Given a RunMaven step created with varargs constructor
-        FakeProcessExecutor fakeExecutor = new FakeProcessExecutor(0);
-        Step runMaven = new RunMaven(tempDir, "clean", "install");
+        Step runMaven = new RunMaven(tempDir, null, "install");
 
         // When getting the step name
         String name = runMaven.name();
 
         // Then it should include all Maven arguments
-        assertEquals("Run Maven: clean install", name,
+        assertEquals("Run Maven: install", name,
                 "Step name should include all Maven arguments");
     }
 
     @Test
     void testNameWithSingleArgument() {
         // Given a RunMaven step with a single argument
-        Step runMaven = new RunMaven(tempDir, "validate");
+        Step runMaven = new RunMaven(tempDir, null, "validate");
 
         // When getting the step name
         String name = runMaven.name();
@@ -98,13 +97,13 @@ class RunMavenTest {
     @Test
     void testNameWithMultipleArguments() {
         // Given a RunMaven step with multiple arguments
-        Step runMaven = new RunMaven(tempDir, "clean", "package", "-DskipTests");
+        Step runMaven = new RunMaven(tempDir, null, "package", "-DskipTests");
 
         // When getting the step name
         String name = runMaven.name();
 
         // Then it should show all arguments in the name
-        assertEquals("Run Maven: clean package -DskipTests", name,
+        assertEquals("Run Maven: package -DskipTests", name,
                 "Step name should show all Maven arguments");
     }
 
@@ -113,7 +112,7 @@ class RunMavenTest {
         // Given a fake process executor that returns various exit codes
         for (int exitCode = 1; exitCode <= 3; exitCode++) {
             FakeProcessExecutor fakeExecutor = new FakeProcessExecutor(exitCode);
-            Step runMaven = new RunMaven(tempDir, List.of("test"), fakeExecutor);
+            Step runMaven = new RunMaven(tempDir, fakeExecutor, "test");
 
             // When executing the step
             // Then it should throw an IOException with the correct exit code
@@ -131,7 +130,7 @@ class RunMavenTest {
         // Given a fake process executor and a specific working directory
         FakeProcessExecutor fakeExecutor = new FakeProcessExecutor(0);
         Path specificDir = tempDir.resolve("subdir");
-        Step runMaven = new RunMaven(specificDir, List.of("compile"), fakeExecutor);
+        Step runMaven = new RunMaven(specificDir, fakeExecutor, "compile");
 
         // When executing the step
         runMaven.execute();

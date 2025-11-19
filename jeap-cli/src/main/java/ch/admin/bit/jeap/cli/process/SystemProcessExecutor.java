@@ -1,5 +1,7 @@
 package ch.admin.bit.jeap.cli.process;
 
+import org.springframework.stereotype.Component;
+
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
@@ -11,6 +13,7 @@ import java.util.List;
  * to the user in real-time.
  * </p>
  */
+@Component
 public class SystemProcessExecutor implements ProcessExecutor {
 
     @Override
