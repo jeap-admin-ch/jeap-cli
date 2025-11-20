@@ -1,17 +1,18 @@
 package ch.admin.bit.jeap.cli.migration.step.maven;
 
 import ch.admin.bit.jeap.cli.migration.step.Step;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
+@Slf4j
 public class UpdateJibBaseImage implements Step {
 
     private final Path rootDirectory;
@@ -45,19 +46,19 @@ public class UpdateJibBaseImage implements Step {
     }
 
     private List<Path> findPomFiles() throws IOException {
-        List<Path> pomFiles = new ArrayList<>();
-
-        if (!Files.isDirectory(rootDirectory)) {
-            return pomFiles;
+        if (!Files.exists(rootDirectory)) {
+            log.debug("Root directory {} does not exist, skipping jib base image update", rootDirectory);
+            return List.of();
         }
 
-        try (Stream<Path> paths = Files.walk(rootDirectory)) {
-            paths.filter(Files::isRegularFile)
-                    .filter(path -> path.getFileName().toString().equals("pom.xml"))
-                    .forEach(pomFiles::add);
+        try (Stream<Path> stream = Files.find(
+                rootDirectory,
+                Integer.MAX_VALUE,
+                (path, attrs) ->
+                        attrs.isRegularFile() &&
+                                path.getFileName().toString().equals("pom.xml"))) {
+            return stream.toList();
         }
-
-        return pomFiles;
     }
 
     private void updatePomFile(Path pomPath) throws IOException {

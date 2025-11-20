@@ -2,6 +2,7 @@ package ch.admin.bit.jeap.cli.migration.process;
 
 import ch.admin.bit.jeap.cli.migration.Migration;
 import ch.admin.bit.jeap.cli.migration.step.dockerfile.UpdateDockerfileJavaVersion;
+import ch.admin.bit.jeap.cli.migration.step.githubactions.UpdateJeapCodebuildImage;
 import ch.admin.bit.jeap.cli.migration.step.jenkinsfile.UpdateJenkinsfileMavenImage;
 import ch.admin.bit.jeap.cli.migration.step.maven.RunMaven;
 import ch.admin.bit.jeap.cli.migration.step.maven.SetJavaVersion;
@@ -43,6 +44,9 @@ public class Java25Migration implements Migration {
 
         // 5) Update Maven JIB plugin configuration to use Java 25 base image
         executeOptionalStep(new UpdateJibBaseImage(root));
+
+        // 6) Update jEAP codebuild images in GitHub Actions workflows
+        executeOptionalStep(new UpdateJeapCodebuildImage(root, "25-node-22"));
 
     }
 }

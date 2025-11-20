@@ -118,6 +118,27 @@ class Java25MigrationTest {
         Path dockerfilePath = tempDir.resolve("Dockerfile");
         Files.writeString(dockerfilePath, dockerfileContent);
 
+        // And a GitHub Actions workflow using jeap-codebuild-java:21
+        String workflowContent = """
+                name: jeap-maven-build
+                
+                on:
+                  push:
+                    branches: [ "**" ]
+                
+                jobs:
+                  build:
+                    uses: NIVEL-GITHUB/jeap-github-actions/.github/workflows/jeap-maven-build.yml@v1
+                    with:
+                      codebuild-image: "jeap-codebuild-java:21-node-22"
+                      system-name: "applicationplatform"
+                      trigger-deployment: true
+                """;
+        Path workflowsDir = tempDir.resolve(".github/workflows");
+        Files.createDirectories(workflowsDir);
+        Path workflowPath = workflowsDir.resolve("build.yml");
+        Files.writeString(workflowPath, workflowContent);
+
         // And a fake process executor that simulates successful Maven execution
         FakeProcessExecutor fakeExecutor = new FakeProcessExecutor(0);
 
@@ -188,6 +209,13 @@ class Java25MigrationTest {
                 "Jib base image should be updated to 25-al2032-headless");
         assertFalse(updatedContent.contains(":21-al2023-headless"),
                 "Old jib base image tag should be replaced");
+
+        // And the GitHub Actions workflow codebuild-image should be updated to Java 25
+        String updatedWorkflowContent = Files.readString(workflowPath);
+        assertTrue(updatedWorkflowContent.contains("codebuild-image: \"jeap-codebuild-java:25-node-22\""),
+                "GitHub Actions codebuild-image should be updated to jeap-codebuild-java:25-node-22");
+        assertFalse(updatedWorkflowContent.contains("21-node-22"),
+                "Old codebuild-image tag should be replaced");
     }
 
     private String getJavaVersion(Path pomPath) throws Exception {
