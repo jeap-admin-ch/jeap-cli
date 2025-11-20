@@ -258,6 +258,52 @@ class SetJavaVersionTest {
     }
 
     @Test
+    void testCreatePropertiesSectionBeforeDependencies() throws Exception {
+        // Given a pom.xml with dependencies but no properties section
+        String pomContent = """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <project xmlns="http://maven.apache.org/POM/4.0.0">
+                    <modelVersion>4.0.0</modelVersion>
+                    <groupId>ch.admin.bit.jeap</groupId>
+                    <artifactId>test-project</artifactId>
+                    <version>1.0.0</version>
+                
+                    <dependencies>
+                        <dependency>
+                            <groupId>org.springframework.boot</groupId>
+                            <artifactId>spring-boot-starter</artifactId>
+                        </dependency>
+                    </dependencies>
+                </project>
+                """;
+
+        Path pomPath = tempDir.resolve("pom.xml");
+        Files.writeString(pomPath, pomContent);
+
+        // When adding java.version
+        Step setJavaVersion = new SetJavaVersion(tempDir, "25");
+        setJavaVersion.execute();
+
+        // Then properties section should be added before dependencies
+        String updatedContent = Files.readString(pomPath);
+        assertTrue(updatedContent.contains("<properties>"), "Properties section should be added");
+        assertTrue(updatedContent.contains("<java.version>25</java.version>"),
+                "java.version should be added");
+        assertTrue(updatedContent.contains("<maven.compiler.release>25</maven.compiler.release>"),
+                "maven.compiler.release should be added");
+
+        // Properties should come before dependencies
+        int propertiesIndex = updatedContent.indexOf("<properties>");
+        int dependenciesIndex = updatedContent.indexOf("<dependencies>");
+        assertTrue(propertiesIndex > 0 && propertiesIndex < dependenciesIndex,
+                "Properties section should be before dependencies section");
+
+        // Verify using helper methods
+        assertEquals("25", getJavaVersion(pomPath));
+        assertEquals("25", getMavenCompilerRelease(pomPath));
+    }
+
+    @Test
     void testSetJavaVersionPreservesXmlStructure() throws Exception {
         // Given a pom.xml with various elements
         String pomContent = """

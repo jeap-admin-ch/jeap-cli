@@ -76,7 +76,24 @@ public class SetJavaVersion implements Step {
             return m.replaceFirst(Matcher.quoteReplacement(insertion));
         }
 
-        // 3) If no <properties> at all: add new block before </project>
+        // 3) If no <properties> at all: add new block before <dependencies> (if found), otherwise before </project>
+        Pattern openDependencies = Pattern.compile("(?m)([ \\t]*)<dependencies>");
+        m = openDependencies.matcher(xml);
+        if (m.find()) {
+            String baseIndent = m.group(1);      // indentation of <dependencies>
+            String propsIndent = baseIndent;
+            String propertyIndent = baseIndent + "    ";
+
+            String block =
+                    propsIndent + "<properties>\n" +
+                            propertyIndent + "<" + propertyName + ">" + propertyValue + "</" + propertyName + ">\n" +
+                            propsIndent + "</properties>\n\n" +
+                            m.group(0); // the original <dependencies> line
+
+            return m.replaceFirst(Matcher.quoteReplacement(block));
+        }
+
+        // 4) If no <dependencies>: add new block before </project>
         Pattern closeProject = Pattern.compile("(?m)([ \\t]*)</project>");
         m = closeProject.matcher(xml);
         if (m.find()) {
