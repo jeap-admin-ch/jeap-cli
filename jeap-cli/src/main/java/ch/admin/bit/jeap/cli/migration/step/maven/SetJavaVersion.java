@@ -1,6 +1,7 @@
 package ch.admin.bit.jeap.cli.migration.step.maven;
 
 import ch.admin.bit.jeap.cli.migration.step.Step;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -9,9 +10,10 @@ import java.nio.file.Path;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+@Slf4j
 public class SetJavaVersion implements Step {
 
-    private final Path pomPath;
+    private final Path rootPath;
     private final String javaVersion;
 
     /**
@@ -19,16 +21,23 @@ public class SetJavaVersion implements Step {
      * If the properties don't exist, they will be added. If the properties section doesn't exist,
      * it will be created.
      *
-     * @param pomPath     the path to the pom.xml file
+     * @param rootPath    the root directory containing the pom.xml file
      * @param javaVersion the Java version to set (e.g., "25")
      */
-    public SetJavaVersion(Path pomPath, String javaVersion) {
-        this.pomPath = pomPath;
+    public SetJavaVersion(Path rootPath, String javaVersion) {
+        this.rootPath = rootPath;
         this.javaVersion = javaVersion;
     }
 
     @Override
     public void execute() throws IOException {
+        Path pomPath = rootPath.resolve("pom.xml");
+
+        if (!Files.isRegularFile(pomPath)) {
+            log.warn("pom.xml file not found at {}, skipping java version update in pom.xml", pomPath);
+            return;
+        }
+
         String xml = Files.readString(pomPath, StandardCharsets.UTF_8);
 
         // Process java.version property

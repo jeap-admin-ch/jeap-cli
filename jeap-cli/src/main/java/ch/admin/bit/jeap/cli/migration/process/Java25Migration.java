@@ -26,8 +26,6 @@ public class Java25Migration implements Migration {
     }
 
     public void migrate(Path root) throws Exception {
-        Path pomPath = root.resolve("pom.xml");
-
         // 1) Update jEAP parent using maven
         executeStep(new RunMaven(root, processExecutor,
                 "versions:update-parent",
@@ -35,7 +33,7 @@ public class Java25Migration implements Migration {
                 "-DgenerateBackupPoms=false"));
 
         // 2) Update java.version property in pom.xml to 25
-        executeStep(new SetJavaVersion(pomPath, "25"));
+        executeStep(new SetJavaVersion(root, "25"));
 
         // 3) Update build image to Java 25 (Jenkinsfile, GitHub Actions Workflows)
         executeOptionalStep(new UpdateJenkinsfileMavenImage(root));

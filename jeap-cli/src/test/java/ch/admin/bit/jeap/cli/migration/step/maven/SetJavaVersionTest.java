@@ -41,7 +41,7 @@ class SetJavaVersionTest {
         Files.writeString(pomPath, pomContent);
 
         // When updating to Java 25
-        Step setJavaVersion = new SetJavaVersion(pomPath, "25");
+        Step setJavaVersion = new SetJavaVersion(tempDir, "25");
         setJavaVersion.execute();
 
         // Then the java.version should be updated to 25
@@ -83,7 +83,7 @@ class SetJavaVersionTest {
         Files.writeString(pomPath, pomContent);
 
         // When adding java.version
-        Step setJavaVersion = new SetJavaVersion(pomPath, "25");
+        Step setJavaVersion = new SetJavaVersion(tempDir, "25");
         setJavaVersion.execute();
 
         // Then java.version should be added
@@ -121,7 +121,7 @@ class SetJavaVersionTest {
         Files.writeString(pomPath, pomContent);
 
         // When adding java.version
-        Step setJavaVersion = new SetJavaVersion(pomPath, "25");
+        Step setJavaVersion = new SetJavaVersion(tempDir, "25");
         setJavaVersion.execute();
 
         // Then properties section and java.version should be added
@@ -162,7 +162,7 @@ class SetJavaVersionTest {
         Files.writeString(pomPath, pomContent);
 
         // When adding java.version
-        Step setJavaVersion = new SetJavaVersion(pomPath, "25");
+        Step setJavaVersion = new SetJavaVersion(tempDir, "25");
         setJavaVersion.execute();
 
         // Then properties section should be added after parent
@@ -235,16 +235,16 @@ class SetJavaVersionTest {
     }
 
     @Test
-    void testSetJavaVersionThrowsExceptionWhenFileNotFound() {
-        // Given a non-existent pom.xml path
-        Path pomPath = tempDir.resolve("non-existent-pom.xml");
+    void testSetJavaVersionLogsWarningWhenFileNotFound() throws Exception {
+        // Given a directory without pom.xml
+        Path emptyDir = tempDir.resolve("empty");
+        Files.createDirectories(emptyDir);
 
-        Step setJavaVersion = new SetJavaVersion(pomPath, "25");
+        Step setJavaVersion = new SetJavaVersion(emptyDir, "25");
 
-
-        // When/Then updating should throw IOException
-        assertThrows(IOException.class, () -> setJavaVersion.execute(),
-                "Should throw IOException when file not found");
+        // When/Then updating should not throw exception (logs warning and returns)
+        assertDoesNotThrow(() -> setJavaVersion.execute(),
+                "Should not throw exception when pom.xml not found, just log warning");
     }
 
     @Test
@@ -286,7 +286,7 @@ class SetJavaVersionTest {
         Files.writeString(pomPath, pomContent);
 
         // When updating java.version
-        Step setJavaVersion = new SetJavaVersion(pomPath, "25");
+        Step setJavaVersion = new SetJavaVersion(tempDir, "25");
         setJavaVersion.execute();
 
         // Then the structure should be preserved
