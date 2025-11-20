@@ -1,0 +1,132 @@
+name: 'Open Source Compliance'
+description: 'Validates and updates open source compliance files (THIRD-PARTY-LICENSES.md and publiccode.yml)'
+author: 'jEAP'
+
+inputs:
+  project-version:
+    description: 'Project version from pom.xml'
+    required: true
+  working-directory:
+    description: 'Working directory for the action'
+    required: false
+    default: '.'
+
+outputs:
+  files-updated:
+    description: 'Whether any files were updated (true/false)'
+    value: ${{ steps.check-changes.outputs.files_updated }}
+  files-changed:
+    description: 'List of files that were changed'
+    value: ${{ steps.check-changes.outputs.files_changed }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Generate Third-Party License File
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        set -euo pipefail
+        echo "Generating THIRD-PARTY-LICENSES.md"
+        ./mvnw -B -ntp org.codehaus.mojo:license-maven-plugin:2.4.0:aggregate-add-third-party
+
+    - name: Validate and Update publiccode.yml
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        PROJECT_VERSION: ${{ inputs.project-version }}
+      run: |
+        set -euo pipefail
+        PC_YML="publiccode.yml"
+        CURRENT_DATE=$(date +%Y-%m-%d)
+
+        echo "Checking for the existence of file ${PC_YML}"
+        if [ ! -f "${PC_YML}" ]; then
+          echo "Error: ${PC_YML} does not exist in this repository."
+          echo "Please create a ${PC_YML} file following the PublicCode standard."
+          exit 1
+        fi
+
+        echo "Checking if ${PC_YML} contains current version ${PROJECT_VERSION} and date ${CURRENT_DATE}"
+        CONTENT=$(cat "${PC_YML}")
+
+        NEEDS_UPDATE=false
+        if ! echo "${CONTENT}" | grep -q "^softwareVersion: ${PROJECT_VERSION}"; then
+          echo "Version mismatch: expected ${PROJECT_VERSION}"
+          NEEDS_UPDATE=true
+        fi
+        if ! echo "${CONTENT}" | grep -q "^releaseDate: ${CURRENT_DATE}"; then
+          echo "Release date mismatch: expected ${CURRENT_DATE}"
+          NEEDS_UPDATE=true
+        fi
+
+        if [ "${NEEDS_UPDATE}" = "true" ]; then
+          echo "Updating ${PC_YML} with current version ${PROJECT_VERSION} and date ${CURRENT_DATE}"
+
+          # Add fields if missing, otherwise update them
+          if ! grep -q "^softwareVersion:" "${PC_YML}"; then
+            sed -i "/^name:/a softwareVersion: ${PROJECT_VERSION}" "${PC_YML}"
+          else
+            sed -i "s/^softwareVersion:.*/softwareVersion: ${PROJECT_VERSION}/" "${PC_YML}"
+          fi
+
+          if ! grep -q "^releaseDate:" "${PC_YML}"; then
+            sed -i "/^name:/a releaseDate: ${CURRENT_DATE}" "${PC_YML}"
+          else
+            sed -i "s/^releaseDate:.*/releaseDate: ${CURRENT_DATE}/" "${PC_YML}"
+          fi
+
+          echo "${PC_YML} has been updated."
+        fi
+
+        echo "Checking if ${PC_YML} contains TODOs"
+        if grep -q "TODO" "${PC_YML}"; then
+          echo "Error: ${PC_YML} contains TODOs. Please edit ${PC_YML} and remove all TODOs before continuing."
+          exit 1
+        fi
+
+        echo "Validating ${PC_YML} against the schema"
+        if ! docker run --rm -i italia/publiccode-parser-go -no-network /dev/stdin < "${PC_YML}"; then
+          echo "Error: ${PC_YML} validation failed against the PublicCode schema"
+          exit 1
+        fi
+
+        echo "${PC_YML} is valid and up to date."
+
+    - name: Check for Changes
+      id: check-changes
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        set -euo pipefail
+
+        # Check git status for both files
+        STATUS=$(git status -s THIRD-PARTY-LICENSES.md publiccode.yml || echo "")
+        echo "Git status: $STATUS"
+
+        if [ -n "$STATUS" ]; then
+          echo "files_updated=true" >> $GITHUB_OUTPUT
+          echo "files_changed=$STATUS" >> $GITHUB_OUTPUT
+          echo "Files have been modified and need to be committed."
+        else
+          echo "files_updated=false" >> $GITHUB_OUTPUT
+          echo "files_changed=" >> $GITHUB_OUTPUT
+          echo "All open source compliance files are up to date."
+        fi
+
+    - name: Commit and Push Changes
+      if: steps.check-changes.outputs.files_updated == 'true'
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        set -euo pipefail
+        echo "Committing and pushing open source compliance file updates"
+        git config user.name "GitHub Actions"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add THIRD-PARTY-LICENSES.md publiccode.yml
+        git commit -m "Update open source compliance files
+
+        - Update THIRD-PARTY-LICENSES.md
+        - Update publiccode.yml version and date"
+        git push
+        echo "Open source compliance files have been updated and pushed."

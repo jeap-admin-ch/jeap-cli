@@ -27,7 +27,6 @@ public class Java25Migration implements Migration {
 
     public void migrate(Path root) throws Exception {
         Path pomPath = root.resolve("pom.xml");
-        // If pom does not exist, log error and exit
 
         // 1) Update jEAP parent using maven
         executeStep(new RunMaven(root, processExecutor,
