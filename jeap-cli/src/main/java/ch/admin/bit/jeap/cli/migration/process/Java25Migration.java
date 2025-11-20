@@ -4,6 +4,7 @@ import ch.admin.bit.jeap.cli.migration.Migration;
 import ch.admin.bit.jeap.cli.migration.step.maven.RunMaven;
 import ch.admin.bit.jeap.cli.migration.step.maven.SetJavaVersion;
 import ch.admin.bit.jeap.cli.process.ProcessExecutor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.nio.file.Path;
@@ -11,6 +12,7 @@ import java.nio.file.Path;
 import static ch.admin.bit.jeap.cli.migration.Migrations.executeStep;
 
 @Component
+@Slf4j
 public class Java25Migration implements Migration {
 
     private final ProcessExecutor processExecutor;

@@ -29,7 +29,7 @@ class SetJavaVersionTest {
                     <groupId>ch.admin.bit.jeap</groupId>
                     <artifactId>test-project</artifactId>
                     <version>1.0.0</version>
-                
+
                     <properties>
                         <java.version>17</java.version>
                         <maven.compiler.source>17</maven.compiler.source>
@@ -49,12 +49,17 @@ class SetJavaVersionTest {
         assertTrue(updatedContent.contains("<java.version>25</java.version>"),
                 "java.version should be updated to 25");
 
+        // And maven.compiler.release should be added with value 25
+        assertTrue(updatedContent.contains("<maven.compiler.release>25</maven.compiler.release>"),
+                "maven.compiler.release should be added with value 25");
+
         // And other properties should remain unchanged
         assertTrue(updatedContent.contains("<maven.compiler.source>17</maven.compiler.source>"),
                 "Other properties should remain unchanged");
 
-        // Verify using getJavaVersion
+        // Verify using helper methods
         assertEquals("25", getJavaVersion(pomPath));
+        assertEquals("25", getMavenCompilerRelease(pomPath));
     }
 
     @Test
@@ -67,7 +72,7 @@ class SetJavaVersionTest {
                     <groupId>ch.admin.bit.jeap</groupId>
                     <artifactId>test-project</artifactId>
                     <version>1.0.0</version>
-                
+
                     <properties>
                         <maven.compiler.source>17</maven.compiler.source>
                     </properties>
@@ -86,12 +91,17 @@ class SetJavaVersionTest {
         assertTrue(updatedContent.contains("<java.version>25</java.version>"),
                 "java.version should be added");
 
+        // And maven.compiler.release should be added
+        assertTrue(updatedContent.contains("<maven.compiler.release>25</maven.compiler.release>"),
+                "maven.compiler.release should be added");
+
         // And existing properties should remain
         assertTrue(updatedContent.contains("<maven.compiler.source>17</maven.compiler.source>"),
                 "Existing properties should remain");
 
-        // Verify using getJavaVersion
+        // Verify using helper methods
         assertEquals("25", getJavaVersion(pomPath));
+        assertEquals("25", getMavenCompilerRelease(pomPath));
     }
 
     @Test
@@ -119,10 +129,13 @@ class SetJavaVersionTest {
         assertTrue(updatedContent.contains("<properties>"), "Properties section should be added");
         assertTrue(updatedContent.contains("<java.version>25</java.version>"),
                 "java.version should be added");
+        assertTrue(updatedContent.contains("<maven.compiler.release>25</maven.compiler.release>"),
+                "maven.compiler.release should be added");
         assertTrue(updatedContent.contains("</properties>"), "Properties section should be closed");
 
-        // Verify using getJavaVersion
+        // Verify using helper methods
         assertEquals("25", getJavaVersion(pomPath));
+        assertEquals("25", getMavenCompilerRelease(pomPath));
     }
 
     @Test
@@ -132,13 +145,13 @@ class SetJavaVersionTest {
                 <?xml version="1.0" encoding="UTF-8"?>
                 <project xmlns="http://maven.apache.org/POM/4.0.0">
                     <modelVersion>4.0.0</modelVersion>
-                
+
                     <parent>
                         <groupId>org.springframework.boot</groupId>
                         <artifactId>spring-boot-starter-parent</artifactId>
                         <version>3.0.0</version>
                     </parent>
-                
+
                     <groupId>ch.admin.bit.jeap</groupId>
                     <artifactId>test-project</artifactId>
                     <version>1.0.0</version>
@@ -157,6 +170,8 @@ class SetJavaVersionTest {
         assertTrue(updatedContent.contains("<properties>"), "Properties section should be added");
         assertTrue(updatedContent.contains("<java.version>25</java.version>"),
                 "java.version should be added");
+        assertTrue(updatedContent.contains("<maven.compiler.release>25</maven.compiler.release>"),
+                "maven.compiler.release should be added");
 
         // Properties should come after parent
         int parentIndex = updatedContent.indexOf("</parent>");
@@ -164,8 +179,9 @@ class SetJavaVersionTest {
         assertTrue(propertiesIndex > parentIndex,
                 "Properties section should be after parent section");
 
-        // Verify using getJavaVersion
+        // Verify using helper methods
         assertEquals("25", getJavaVersion(pomPath));
+        assertEquals("25", getMavenCompilerRelease(pomPath));
     }
 
     @Test
@@ -276,6 +292,7 @@ class SetJavaVersionTest {
         // Then the structure should be preserved
         String updatedContent = Files.readString(pomPath);
         assertTrue(updatedContent.contains("<java.version>25</java.version>"));
+        assertTrue(updatedContent.contains("<maven.compiler.release>25</maven.compiler.release>"));
         assertTrue(updatedContent.contains("<spring.version>3.0.0</spring.version>"));
         assertTrue(updatedContent.contains("<dependencies>"));
         assertTrue(updatedContent.contains("<dependency>"));
@@ -284,6 +301,16 @@ class SetJavaVersionTest {
     private String getJavaVersion(Path pomPath) throws IOException {
         String content = Files.readString(pomPath);
         Pattern pattern = Pattern.compile("<java\\.version\\s*>([^<]*)</java\\.version>");
+        Matcher matcher = pattern.matcher(content);
+        if (matcher.find()) {
+            return matcher.group(1);
+        }
+        return null;
+    }
+
+    private String getMavenCompilerRelease(Path pomPath) throws IOException {
+        String content = Files.readString(pomPath);
+        Pattern pattern = Pattern.compile("<maven\\.compiler\\.release\\s*>([^<]*)</maven\\.compiler\\.release>");
         Matcher matcher = pattern.matcher(content);
         if (matcher.find()) {
             return matcher.group(1);

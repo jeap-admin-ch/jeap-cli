@@ -74,14 +74,30 @@ class Java25MigrationTest {
         assertTrue(updatedContent.contains("<java.version>25</java.version>"),
                 "java.version should be updated to 25");
 
-        // Verify using getJavaVersion helper
+        // And the maven.compiler.release property should be updated to 25
+        assertTrue(updatedContent.contains("<maven.compiler.release>25</maven.compiler.release>"),
+                "maven.compiler.release should be updated to 25");
+
+        // Verify using helper methods
         assertEquals("25", getJavaVersion(pomPath),
                 "java.version should be exactly 25");
+        assertEquals("25", getMavenCompilerRelease(pomPath),
+                "maven.compiler.release should be exactly 25");
     }
 
     private String getJavaVersion(Path pomPath) throws Exception {
         String content = Files.readString(pomPath);
         Pattern pattern = Pattern.compile("<java\\.version\\s*>([^<]*)</java\\.version>");
+        Matcher matcher = pattern.matcher(content);
+        if (matcher.find()) {
+            return matcher.group(1);
+        }
+        return null;
+    }
+
+    private String getMavenCompilerRelease(Path pomPath) throws Exception {
+        String content = Files.readString(pomPath);
+        Pattern pattern = Pattern.compile("<maven\\.compiler\\.release\\s*>([^<]*)</maven\\.compiler\\.release>");
         Matcher matcher = pattern.matcher(content);
         if (matcher.find()) {
             return matcher.group(1);
