@@ -1,0 +1,3 @@
+secret:
+  enable-builtin-rules: true
+  enable-commit-history: true

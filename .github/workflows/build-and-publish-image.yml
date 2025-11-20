@@ -63,6 +63,17 @@ jobs:
         run: |
           java -version
 
+      - name: Run Trivy Security Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'repo'
+          scan-ref: '.'
+          format: 'table'
+          exit-code: '1'
+          severity: 'CRITICAL,HIGH'
+          scanners: 'vuln,secret,misconfig'
+          trivy-config: '.trivyconfig.yaml'
+
       - name: Maven Build
         run: ./mvnw -B -ntp -Pnative package
 
