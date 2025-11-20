@@ -21,6 +21,6 @@ public class Migrations {
     }
 
     private static void logExecution(Step step) {
-        log.info("Executing step {}", step);
+        log.info("Executing step {}", step.name());
     }
 }
