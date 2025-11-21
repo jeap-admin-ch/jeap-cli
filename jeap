@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-IMAGE="ghcr.io/jeap-admin-ch/jeap-cli:latest"
+IMAGE="${JEAP_CLI_IMAGE:-ghcr.io/jeap-admin-ch/jeap-cli:latest}"
 MARKER_DIR="$HOME/.jeap"
 MARKER_FILE="$MARKER_DIR/.cli-update"  # Update marker file
 CHECK_WINDOW_SEC=$((2*24*60*60))       # 2 days in seconds
@@ -18,28 +18,30 @@ fi
 command -v docker >/dev/null 2>&1 || die "docker is not installed or not on PATH"
 mkdir -p "$MARKER_DIR"
 
-# 1) Ensure image exists locally (pull if missing)
-if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
-  echo "Docker image not found locally. Pulling $IMAGE ..."
-  docker pull "$IMAGE"
-  touch "$MARKER_FILE"
-else
-  # 2) If last pull/refresh is older than 2 days (based on marker), refresh
-  needs_refresh=false
-  if [[ ! -f "$MARKER_FILE" ]]; then
-    needs_refresh=true
-  else
-    now=$(date +%s)
-    last=$(stat -c %Y "$MARKER_FILE")
-    elapsed=$((now - last))
-    if (( elapsed >= CHECK_WINDOW_SEC )); then
-      needs_refresh=true
-    fi
-  fi
-
-  if $needs_refresh; then
+# 1) Ensure image exists locally (pull if missing) only if JEAP_CLI_IMAGE is not set
+if [[ -z "${JEAP_CLI_IMAGE:-}" ]]; then
+  if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
+    echo "Docker image not found locally. Pulling $IMAGE ..."
     docker pull "$IMAGE"
     touch "$MARKER_FILE"
+  else
+    # 2) If last pull/refresh is older than 2 days (based on marker), refresh
+    needs_refresh=false
+    if [[ ! -f "$MARKER_FILE" ]]; then
+      needs_refresh=true
+    else
+      now=$(date +%s)
+      last=$(stat -c %Y "$MARKER_FILE")
+      elapsed=$((now - last))
+      if (( elapsed >= CHECK_WINDOW_SEC )); then
+        needs_refresh=true
+      fi
+    fi
+
+    if $needs_refresh; then
+      docker pull "$IMAGE"
+      touch "$MARKER_FILE"
+    fi
   fi
 fi
 
@@ -63,14 +65,44 @@ if [[ -d "$HOME/.config/npm" ]]; then
   DOCKER_MOUNTS+=("-v" "$HOME/.config/npm:/home/jeapcli/.config/npm:rw")
 fi
 
+# Mount cacerts if available
+if [[ -f "/etc/ssl/certs/java/cacerts" ]]; then
+  DOCKER_MOUNTS+=("-v" "/etc/ssl/certs/java/cacerts:/opt/java/openjdk/lib/security/cacerts")
+elif [[ -f "$JAVA_HOME/lib/security/cacerts" ]]; then
+  DOCKER_MOUNTS+=("-v" "$JAVA_HOME/lib/security/cacerts:/opt/java/openjdk/lib/security/cacerts")
+fi
+
 # Pass user UID/GID to be able to write to workspace files
 MY_UID=$(id -u)
 MY_GID=$(id -g)
 DOCKER_USER_OPTS=(--user "${MY_UID}:${MY_GID}")
 
-exec docker run --rm "${DOCKER_TTY_OPTS[@]}" \
-  "${DOCKER_USER_OPTS[@]}" \
-  "${DOCKER_MOUNTS[@]}" \
-  -w /workspace \
-  "$IMAGE" \
+# Pass proxy environment variables if set
+DOCKER_ENV_OPTS=()
+for VAR in HTTP_PROXY HTTPS_PROXY NO_PROXY http_proxy https_proxy no_proxy; do
+  if [[ -n "${!VAR:-}" ]]; then
+    DOCKER_ENV_OPTS+=("-e" "$VAR=${!VAR}")
+  fi
+done
+
+# Build the complete docker command
+DOCKER_CMD=(
+  docker run --rm
+  "${DOCKER_TTY_OPTS[@]}"
+  "${DOCKER_USER_OPTS[@]}"
+  "${DOCKER_MOUNTS[@]}"
+  "${DOCKER_ENV_OPTS[@]}"
+  -w /workspace
+  "$IMAGE"
   "$@"
+)
+
+# Verbose mode: log the docker command if JEAP_CLI_VERBOSE is set
+if [[ -n "${JEAP_CLI_VERBOSE:-}" ]]; then
+  echo "=== Docker Command ===" >&2
+  printf '%q ' "${DOCKER_CMD[@]}" >&2
+  echo >&2
+  echo "=====================" >&2
+fi
+
+exec "${DOCKER_CMD[@]}"

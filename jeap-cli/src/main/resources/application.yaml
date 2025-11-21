@@ -7,6 +7,9 @@ spring:
     banner-mode: console
   banner:
     location: "classpath:banner/cli-banner.txt"
+  shell:
+    history:
+      enabled: false
 
 logging:
   pattern:
