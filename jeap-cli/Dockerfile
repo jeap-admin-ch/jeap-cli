@@ -2,12 +2,29 @@ FROM eclipse-temurin:25-jdk-noble
 
 LABEL org.opencontainers.image.description="jEAP CLI Container Image (https://github.com/jeap-admin-ch/jeap-cli)"
 
+# Proxy configuration for building behind corporate proxies
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+ARG NO_PROXY
+
 # Install Maven
 ARG MAVEN_VERSION=3.9.11
 ARG MAVEN_SHA=bcfe4fe305c962ace56ac7b5fc7a08b87d5abd8b7e89027ab251069faebee516b0ded8961445d6d91ec1985dfe30f8153268843c89aa392733d1a3ec956c9978
 ARG MAVEN_URL=https://dlcdn.apache.org/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz
 
-RUN apt-get update && apt-get install -y --no-install-recommends curl && \
+RUN --mount=type=secret,id=cacert,target=/tmp/host-ca-bundle.crt \
+    if [ -f /tmp/host-ca-bundle.crt ]; then \
+        echo "Adding host CA certificates to trust store..."; \
+        cat /tmp/host-ca-bundle.crt >> /etc/ssl/certs/ca-certificates.crt; \
+    fi && \
+    if [ -n "$HTTP_PROXY" ]; then \
+        echo "Acquire::http::Proxy \"$HTTP_PROXY\";" > /etc/apt/apt.conf.d/proxy.conf; \
+    fi && \
+    if [ -n "$HTTPS_PROXY" ]; then \
+        echo "Acquire::https::Proxy \"$HTTPS_PROXY\";" >> /etc/apt/apt.conf.d/proxy.conf; \
+    fi && \
+    apt-get update && apt-get install -y --no-install-recommends curl && \
+    HTTP_PROXY=$HTTP_PROXY HTTPS_PROXY=$HTTPS_PROXY NO_PROXY=$NO_PROXY \
     curl -fsSL -o /tmp/apache-maven.tar.gz ${MAVEN_URL} && \
     echo "${MAVEN_SHA}  /tmp/apache-maven.tar.gz" | sha512sum -c - && \
     tar -xzf /tmp/apache-maven.tar.gz -C /opt && \
@@ -16,7 +33,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl && \
     apt-get remove -y curl && \
     apt-get autoremove -y && \
     apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/* /etc/apt/apt.conf.d/proxy.conf
 
 ENV MAVEN_HOME=/opt/maven
 ENV PATH="${MAVEN_HOME}/bin:${PATH}"
