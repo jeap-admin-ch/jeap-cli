@@ -44,6 +44,27 @@ The release version of the CLI is built as a native executable to improve startu
 ./mvnw clean package -Pnative
 ```
 
+### Local Docker Image Build
+
+The production CLI is deployed as a Docker image that includes the native executable and Maven for building projects.
+For testing the resulting image in the local development environment, use the provided build script that handles both
+the native build and Docker image creation.
+
+```bash
+./local-docker-image-build.sh
+```
+
+The script automatically detects and handles:
+
+- Proxy configuration from environment variables (`HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY`)
+- Corporate CA certificates from the system trust store are passed to the CLI container
+
+The resulting Docker image will be tagged as `jeap-cli:latest`, and can be run using the following command:
+
+```bash
+export JEAP_CLI_IMAGE=jeap-cli:latest && ./jeap help
+```
+
 ## Note
 
 This repository is part of the open source distribution of jEAP. See [github.com/jeap-admin-ch/jeap](https://github.com/jeap-admin-ch/jeap)
