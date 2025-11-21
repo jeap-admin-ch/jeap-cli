@@ -78,6 +78,7 @@ jobs:
         uses: ./.github/actions/opensource-compliance
         with:
           project-version: ${{ steps.version.outputs.version }}
+          commit-changes: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Maven Build
         run: ./mvnw -B -ntp -Pnative package

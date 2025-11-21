@@ -10,6 +10,10 @@ inputs:
     description: 'Working directory for the action'
     required: false
     default: '.'
+  commit-changes:
+    description: 'Whether to commit and push changes (typically true only on main branch)'
+    required: false
+    default: 'false'
 
 outputs:
   files-updated:
@@ -115,7 +119,7 @@ runs:
         fi
 
     - name: Commit and Push Changes
-      if: steps.check-changes.outputs.files_updated == 'true'
+      if: steps.check-changes.outputs.files_updated == 'true' && inputs.commit-changes == 'true'
       shell: bash
       working-directory: ${{ inputs.working-directory }}
       run: |
@@ -130,3 +134,11 @@ runs:
         - Update publiccode.yml version and date"
         git push
         echo "Open source compliance files have been updated and pushed."
+
+    - name: Report Skipped Commit
+      if: steps.check-changes.outputs.files_updated == 'true' && inputs.commit-changes != 'true'
+      shell: bash
+      run: |
+        echo "Open source compliance files were updated but not committed (not on main branch)"
+        echo "Files changed:"
+        echo "${{ steps.check-changes.outputs.files_changed }}"
