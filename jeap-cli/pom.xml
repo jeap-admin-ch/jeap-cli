@@ -6,13 +6,13 @@
     <parent>
         <groupId>ch.admin.bit.jeap</groupId>
         <artifactId>jeap-cli-parent</artifactId>
-        <version>0.1.0-SNAPSHOT</version>
+        <version>0.2.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
 	<groupId>ch.admin.bit.jeap</groupId>
 	<artifactId>jeap-cli</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <version>0.2.0-SNAPSHOT</version>
     <name>${project.groupId}:${project.artifactId}</name>
 	<description>jEAP CLI</description>
 
@@ -25,6 +25,10 @@
 			<groupId>org.springframework.shell</groupId>
 			<artifactId>spring-shell-starter</artifactId>
 		</dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+        </dependency>
 
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -52,6 +56,16 @@
 
 	<build>
 		<plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
+                    <parameters>true</parameters>
+                    <proc>full</proc>
+                </configuration>
+            </plugin>
             <plugin>
                 <artifactId>maven-jar-plugin</artifactId>
                 <configuration>
@@ -138,8 +152,9 @@
                                     <buildArg>-H:+ReportExceptionStackTraces</buildArg>
                                     <buildArg>-H:IncludeResources=banner/.*</buildArg>
                                     <buildArg>-H:Log=registerResource</buildArg>
-                                    <buildArg>--future-defaults=all</buildArg>
                                     <buildArg>-march=compatibility</buildArg>
+                                    <buildArg>--future-defaults=all</buildArg>
+                                    <buildArg>--enable-native-access=ALL-UNNAMED</buildArg>
                                 </buildArgs>
                             </configuration>
                             <executions>
