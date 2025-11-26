@@ -13,7 +13,8 @@ echo "Where would you like to install the launcher?"
 echo "  1) Global (for all users, requires sudo) -> ${GLOBAL_INSTALL_DIR}"
 echo "  2) User only (current user)             -> ${USER_INSTALL_DIR}"
 echo
-read -r -p "Choice [2]: " INSTALL_CHOICE
+
+read -r -p "Choice [2]: " INSTALL_CHOICE < /dev/tty
 
 case "${INSTALL_CHOICE:-2}" in
   1)
