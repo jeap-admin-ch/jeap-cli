@@ -18,8 +18,9 @@ The CLI will update itself regularly.
 ### Requirements
 
 - A working local Docker environment
-- curl and sudo available on your system
-- Linux (tested on Ubuntu, works on most distributions)
+- curl installed on your system
+- sudo installed if you want to install the CLI system-wide
+- Linux (tested on Ubuntu, works on most distributions) or Mac OS X
 
 ## Building
 
@@ -49,6 +50,8 @@ The release version of the CLI is built as a native executable to improve startu
 The production CLI is deployed as a Docker image that includes the native executable and Maven for building projects.
 For testing the resulting image in the local development environment, use the provided build script that handles both
 the native build and Docker image creation.
+
+Make sure your JAVA_HOME environment variable is set to a GraalVM JDK, and run the following command:
 
 ```bash
 ./local-docker-image-build.sh
