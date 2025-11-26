@@ -1,15 +1,39 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -eo pipefail
 
 IMAGE="${JEAP_CLI_IMAGE:-ghcr.io/jeap-admin-ch/jeap-cli:latest}"
 MARKER_DIR="$HOME/.jeap"
 MARKER_FILE="$MARKER_DIR/.cli-update"  # Update marker file
 CHECK_WINDOW_SEC=$((2*24*60*60))       # 2 days in seconds
 
-die() { echo "Error: $*" >&2; exit 1; }
+die() {
+  echo "Error: $*" >&2
+  exit 1
+}
+
+# Cross-platform mtime helper fuer Linux (GNU stat) und macOS (BSD stat)
+get_file_mtime() {
+  local file="$1"
+
+  # Detect OS once and use the right stat variant
+  case "$(uname)" in
+    Darwin)
+      # macOS / BSD stat: %m = epoch modification time
+      stat -f %m "$file"
+      ;;
+    *)
+      # Linux / GNU stat: %Y = epoch modification time
+      stat -c %Y "$file"
+      ;;
+  esac
+}
+
+declare -a DOCKER_TTY_OPTS=()
+declare -a DOCKER_MOUNTS=()
+declare -a DOCKER_USER_OPTS=()
+declare -a DOCKER_ENV_OPTS=()
 
 # enable -it only when interactive
-DOCKER_TTY_OPTS=()
 if [[ -t 0 && -t 1 ]]; then
   DOCKER_TTY_OPTS+=("-it")
 fi
@@ -31,7 +55,7 @@ if [[ -z "${JEAP_CLI_IMAGE:-}" ]]; then
       needs_refresh=true
     else
       now=$(date +%s)
-      last=$(stat -c %Y "$MARKER_FILE")
+      last=$(get_file_mtime "$MARKER_FILE")
       elapsed=$((now - last))
       if (( elapsed >= CHECK_WINDOW_SEC )); then
         needs_refresh=true
@@ -68,7 +92,7 @@ fi
 # Mount cacerts if available
 if [[ -f "/etc/ssl/certs/java/cacerts" ]]; then
   DOCKER_MOUNTS+=("-v" "/etc/ssl/certs/java/cacerts:/opt/java/openjdk/lib/security/cacerts")
-elif [[ -f "$JAVA_HOME/lib/security/cacerts" ]]; then
+elif [[ -n "${JAVA_HOME:-}" && -f "$JAVA_HOME/lib/security/cacerts" ]]; then
   DOCKER_MOUNTS+=("-v" "$JAVA_HOME/lib/security/cacerts:/opt/java/openjdk/lib/security/cacerts")
 fi
 
@@ -78,7 +102,6 @@ MY_GID=$(id -g)
 DOCKER_USER_OPTS=(--user "${MY_UID}:${MY_GID}")
 
 # Pass proxy environment variables if set
-DOCKER_ENV_OPTS=()
 for VAR in HTTP_PROXY HTTPS_PROXY NO_PROXY http_proxy https_proxy no_proxy; do
   if [[ -n "${!VAR:-}" ]]; then
     DOCKER_ENV_OPTS+=("-e" "$VAR=${!VAR}")
