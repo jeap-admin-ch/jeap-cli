@@ -23,18 +23,18 @@ public class UpdateJibBaseImage implements Step {
      * Updates jib-maven-plugin base image to Java 25 in all pom.xml files.
      * <p>
      * The step recursively finds all pom.xml files under the root directory and updates
-     * the jib-maven-plugin base image tag to 25-al2032-headless if the image name is 'imageName'.
+     * the jib-maven-plugin base image tag to 25-al2023-headless if the image name is 'imageName'.
      * For example:
-     * - host:1234/amazoncorretto:21-al2023-headless -> host:1234/amazoncorretto:25-al2032-headless
-     * - amazoncorretto:17 -> amazoncorretto:25-al2032-headless
-     * - registry.example.com/path/to/amazoncorretto:21-al2023 -> registry.example.com/path/to/amazoncorretto:25-al2032-headless
+     * - host:1234/amazoncorretto:21-al2023-headless -> host:1234/amazoncorretto:25-al2023-headless
+     * - amazoncorretto:17 -> amazoncorretto:25-al2023-headless
+     * - registry.example.com/path/to/amazoncorretto:21-al2023 -> registry.example.com/path/to/amazoncorretto:25-al2023-headless
      * <p>
      * Only updates images where the last part of the image name (ignoring paths/hosts) is 'imageName'.
      * Does nothing if no pom.xml files are found or if they don't contain jib-maven-plugin with 'imageName' base image.
      *
      * @param rootDirectory the root directory to search for pom.xml files recursively
      * @param imageName     the image name to match (e.g., "amazoncorretto")
-     * @param imageTag      the image tag to set (e.g., "25-al2032-headless")
+     * @param imageTag      the image tag to set (e.g., "25-al2023-headless")
      */
     public UpdateJibBaseImage(Path rootDirectory, String imageName, String imageTag) {
         this.rootDirectory = rootDirectory;

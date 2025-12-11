@@ -51,17 +51,17 @@ class UpdateJibBaseImageTest {
 
         // Then the image should be updated to Java 25
         String updatedContent = Files.readString(pomPath);
-        assertTrue(updatedContent.contains("<image>amazoncorretto:25-al2032-headless</image>"),
-                "Jib base image should be updated to 25-al2032-headless");
+        assertTrue(updatedContent.contains("<image>amazoncorretto:25-al2023-headless</image>"),
+                "Jib base image should be updated to 25-al2023-headless");
         assertFalse(updatedContent.contains("<image>amazoncorretto:21</image>"),
                 "Old image tag should be replaced");
 
         // Verify using helper method
-        assertEquals("amazoncorretto:25-al2032-headless", getJibFromImage(updatedContent));
+        assertEquals("amazoncorretto:25-al2023-headless", getJibFromImage(updatedContent));
     }
 
     private UpdateJibBaseImage createUpdateJibBaseImageStep() {
-        return new UpdateJibBaseImage(tempDir, "amazoncorretto", "25-al2032-headless");
+        return new UpdateJibBaseImage(tempDir, "amazoncorretto", "25-al2023-headless");
     }
 
     @Test
@@ -98,11 +98,11 @@ class UpdateJibBaseImageTest {
 
         // Then the image should be updated
         String updatedContent = Files.readString(pomPath);
-        assertTrue(updatedContent.contains("<image>host:1234/amazoncorretto:25-al2032-headless</image>"),
+        assertTrue(updatedContent.contains("<image>host:1234/amazoncorretto:25-al2023-headless</image>"),
                 "Jib base image with registry should be updated");
 
         // Verify using helper method
-        assertEquals("host:1234/amazoncorretto:25-al2032-headless", getJibFromImage(updatedContent));
+        assertEquals("host:1234/amazoncorretto:25-al2023-headless", getJibFromImage(updatedContent));
     }
 
     @Test
@@ -139,11 +139,11 @@ class UpdateJibBaseImageTest {
 
         // Then the image should be updated
         String updatedContent = Files.readString(pomPath);
-        assertTrue(updatedContent.contains("<image>registry.example.com/path/to/amazoncorretto:25-al2032-headless</image>"),
+        assertTrue(updatedContent.contains("<image>registry.example.com/path/to/amazoncorretto:25-al2023-headless</image>"),
                 "Jib base image with multiple paths should be updated");
 
         // Verify using helper method
-        assertEquals("registry.example.com/path/to/amazoncorretto:25-al2032-headless", getJibFromImage(updatedContent));
+        assertEquals("registry.example.com/path/to/amazoncorretto:25-al2023-headless", getJibFromImage(updatedContent));
     }
 
     @Test
@@ -207,16 +207,16 @@ class UpdateJibBaseImageTest {
 
         // Then both pom files should be updated
         String updatedContent1 = Files.readString(pom1Path);
-        assertTrue(updatedContent1.contains("<image>amazoncorretto:25-al2032-headless</image>"),
+        assertTrue(updatedContent1.contains("<image>amazoncorretto:25-al2023-headless</image>"),
                 "First pom should be updated");
 
         String updatedContent2 = Files.readString(pom2Path);
-        assertTrue(updatedContent2.contains("<image>repo.example.com/amazoncorretto:25-al2032-headless</image>"),
+        assertTrue(updatedContent2.contains("<image>repo.example.com/amazoncorretto:25-al2023-headless</image>"),
                 "Second pom should be updated");
 
         // Verify using helper method
-        assertEquals("amazoncorretto:25-al2032-headless", getJibFromImage(updatedContent1));
-        assertEquals("repo.example.com/amazoncorretto:25-al2032-headless", getJibFromImage(updatedContent2));
+        assertEquals("amazoncorretto:25-al2023-headless", getJibFromImage(updatedContent1));
+        assertEquals("repo.example.com/amazoncorretto:25-al2023-headless", getJibFromImage(updatedContent2));
     }
 
     @Test
@@ -310,7 +310,7 @@ class UpdateJibBaseImageTest {
         // Given a non-existent directory
         Path nonExistentDir = tempDir.resolve("non-existent");
 
-        Step updateJib = new UpdateJibBaseImage(nonExistentDir, "amazoncorretto", "25-al2032-headless");
+        Step updateJib = new UpdateJibBaseImage(nonExistentDir, "amazoncorretto", "25-al2023-headless");
 
         // Then no error should occur
         assertDoesNotThrow(() -> updateJib.execute(),
@@ -373,7 +373,7 @@ class UpdateJibBaseImageTest {
         assertTrue(updatedContent.contains("<mainClass>com.example.Main</mainClass>"));
         assertTrue(updatedContent.contains("<to>"));
         assertTrue(updatedContent.contains("<dependencies>"));
-        assertTrue(updatedContent.contains("<image>host:1234/amazoncorretto:25-al2032-headless</image>"));
+        assertTrue(updatedContent.contains("<image>host:1234/amazoncorretto:25-al2023-headless</image>"));
     }
 
     @Test
@@ -385,7 +385,7 @@ class UpdateJibBaseImageTest {
         String name = step.name();
 
         // Then it should return the custom name with image name and tag
-        assertEquals("Update Jib Base Image to amazoncorretto:25-al2032-headless", name,
+        assertEquals("Update Jib Base Image to amazoncorretto:25-al2023-headless", name,
                 "Step name should include image name and tag");
     }
 
@@ -423,11 +423,11 @@ class UpdateJibBaseImageTest {
 
         // Then the image should be updated to Java 25
         String updatedContent = Files.readString(pomPath);
-        assertTrue(updatedContent.contains("<image>amazoncorretto:25-al2032-headless</image>"),
-                "Java 17 should be updated to 25-al2032-headless");
+        assertTrue(updatedContent.contains("<image>amazoncorretto:25-al2023-headless</image>"),
+                "Java 17 should be updated to 25-al2023-headless");
 
         // Verify using helper method
-        assertEquals("amazoncorretto:25-al2032-headless", getJibFromImage(updatedContent));
+        assertEquals("amazoncorretto:25-al2023-headless", getJibFromImage(updatedContent));
     }
 
     private String getJibFromImage(String pomContent) {

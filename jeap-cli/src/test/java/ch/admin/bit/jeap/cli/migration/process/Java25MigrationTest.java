@@ -205,8 +205,8 @@ class Java25MigrationTest {
                 "Dockerfile should not contain :21-jre");
 
         // And the pom.xml jib base image should be updated to Java 25
-        assertTrue(updatedContent.contains("<image>host:1234/amazoncorretto:25-al2032-headless</image>"),
-                "Jib base image should be updated to 25-al2032-headless");
+        assertTrue(updatedContent.contains("<image>host:1234/amazoncorretto:25-al2023-headless</image>"),
+                "Jib base image should be updated to 25-al2023-headless");
         assertFalse(updatedContent.contains(":21-al2023-headless"),
                 "Old jib base image tag should be replaced");
 
