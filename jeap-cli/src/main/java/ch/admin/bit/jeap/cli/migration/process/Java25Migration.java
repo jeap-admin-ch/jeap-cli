@@ -52,7 +52,7 @@ public class Java25Migration implements Migration {
         executeOptionalStep(new UpdateDockerfileJavaVersion(root, "jeap-runtime-coretto", "25.20251119043107"));
 
         // 5) Update Maven JIB plugin configuration to use Java 25 base image
-        executeOptionalStep(new UpdateJibBaseImage(root, "amazoncorretto", JAVA_VERSION + "-al2032-headless"));
+        executeOptionalStep(new UpdateJibBaseImage(root, "amazoncorretto", JAVA_VERSION + "-al2023-headless"));
 
         // 6) Update jEAP codebuild images in GitHub Actions workflows
         executeOptionalStep(new UpdateJeapCodebuildImage(root, JAVA_VERSION + "-node-22"));
