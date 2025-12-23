@@ -318,6 +318,80 @@ class UpdateJeapCodebuildImageTest {
     }
 
     @Test
+    void testAddsCodebuildImageToPactVerifyWorkflowWhenMissing() throws Exception {
+        // Given a pact-verify workflow using jeap-github-actions without codebuild-image
+        String workflowContent = """
+                name: jeap-pact-verify
+                run-name: "Verify pact from consumer ${{ inputs.consumer-name || github.event.client_payload.consumer-name }} for provider ${{ inputs.provider-name || github.event.client_payload.provider-name }}"
+                
+                on:
+                  repository_dispatch:
+                    types:
+                      - trigger-pact-verify-event
+                
+                  # Allows you to run this workflow manually from the Actions tab
+                  workflow_dispatch:
+                    inputs:
+                        consumer-name:
+                          required: true
+                          description: 'The name of the consumer service.'
+                          type: string
+                        provider-name:
+                          required: true
+                          description: 'The name of the provider service.'
+                          type: string
+                        pact-url:
+                          required: true
+                          description: 'The URL of the pact file.'
+                          type: string
+                        provider-version:
+                          required: false
+                          description: 'The version of the provider service.'
+                          type: string
+                        provider-branch:
+                          required: true
+                          description: 'The branch of the provider service.'
+                          type: string
+                
+                jobs:
+                  verify:
+                    uses: NIVEL-GITHUB/jeap-github-actions/.github/workflows/jeap-pact-verify.yml@v1
+                    secrets: inherit
+                    with:
+                      system-name: "applicationplatform"
+                      consumer-name: ${{ inputs.consumer-name || github.event.client_payload.consumer-name }}
+                      provider-name: ${{ inputs.provider-name || github.event.client_payload.provider-name }}
+                      pact-url: ${{ inputs.pact-url || github.event.client_payload.pact-url }}
+                      provider-version: ${{ inputs.provider-version || github.event.client_payload.provider-version }}
+                      provider-branch: ${{ inputs.provider-branch || github.event.client_payload.provider-branch }}
+                      pact-provider-tests: "PactProviderTest"
+                """;
+
+        Path workflowsDir = tempDir.resolve(".github/workflows");
+        Files.createDirectories(workflowsDir);
+        Path workflowFile = workflowsDir.resolve("build.yml");
+        Files.writeString(workflowFile, workflowContent);
+
+        // When updating codebuild image
+        Step updateImage = new UpdateJeapCodebuildImage(tempDir, "25-node-22");
+        updateImage.execute();
+
+        // Then the codebuild-image should be added
+        String updatedContent = Files.readString(workflowFile);
+        assertTrue(updatedContent.contains("codebuild-image: \"jeap-codebuild-java:25-node-22\""),
+                "Codebuild image should be added to with: block");
+        assertTrue(updatedContent.contains("system-name: \"applicationplatform\""),
+                "Existing parameters should be preserved");
+        assertTrue(updatedContent.contains("pact-provider-tests: \"PactProviderTest\""),
+                "Existing parameters should be preserved");
+        assertTrue(updatedContent.contains("secrets: inherit"),
+                "secrets: inherit should be preserved");
+
+        // Verify using helper method
+        assertEquals("jeap-codebuild-java:25-node-22", getCodebuildImage(updatedContent));
+    }
+
+    @Test
     void testAddsCodebuildImageWithCorrectIndentation() throws Exception {
         // Given a workflow with specific indentation
         String workflowContent = """

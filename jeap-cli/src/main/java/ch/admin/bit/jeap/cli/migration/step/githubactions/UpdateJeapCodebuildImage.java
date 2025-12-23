@@ -156,9 +156,10 @@ public class UpdateJeapCodebuildImage implements Step {
             );
             Matcher withMatcher = withPattern.matcher(content.substring(usesEnd));
 
-            if (withMatcher.find() && withMatcher.start() == 0) {
+            if (withMatcher.find()) {
                 String indentation = withMatcher.group(1);
                 String withLine = withMatcher.group(2);
+                int withStart = usesEnd + withMatcher.start();
                 int withEnd = usesEnd + withMatcher.end();
 
                 // Check if the following content contains codebuild-image before the next job/uses
@@ -168,7 +169,11 @@ public class UpdateJeapCodebuildImage implements Step {
 
                 if (!withBlockContent.contains("codebuild-image:")) {
                     // Add codebuild-image
+                    // First append any content between uses: and with: (e.g., "secrets: inherit")
+                    result.append(content, lastEnd, withStart);
+                    // Then append the with: line
                     result.append(indentation).append(withLine);
+                    // Then add codebuild-image as the first parameter
                     String paramIndentation = indentation + "  ";
                     result.append(paramIndentation)
                             .append("codebuild-image: \"jeap-codebuild-java:")
