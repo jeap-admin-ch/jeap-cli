@@ -10,7 +10,7 @@ ARG NO_PROXY
 # Install Maven
 ARG MAVEN_VERSION=3.9.11
 ARG MAVEN_SHA=bcfe4fe305c962ace56ac7b5fc7a08b87d5abd8b7e89027ab251069faebee516b0ded8961445d6d91ec1985dfe30f8153268843c89aa392733d1a3ec956c9978
-ARG MAVEN_URL=https://dlcdn.apache.org/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz
+ARG MAVEN_URL=https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/${MAVEN_VERSION}/apache-maven-${MAVEN_VERSION}-bin.tar.gz
 
 RUN --mount=type=secret,id=cacert,target=/etc/host-ca-bundle.crt \
     if [ -f /etc/host-ca-bundle.crt ]; then \
