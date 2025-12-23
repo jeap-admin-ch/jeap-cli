@@ -7,6 +7,7 @@ import ch.admin.bit.jeap.cli.migration.step.jenkinsfile.UpdateJenkinsfileMavenIm
 import ch.admin.bit.jeap.cli.migration.step.maven.RunMaven;
 import ch.admin.bit.jeap.cli.migration.step.maven.SetJavaVersion;
 import ch.admin.bit.jeap.cli.migration.step.maven.UpdateJibBaseImage;
+import ch.admin.bit.jeap.cli.migration.step.mavenwrapper.UpdateMavenWrapper;
 import ch.admin.bit.jeap.cli.process.ProcessExecutor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -56,5 +57,8 @@ public class Java25Migration implements Migration {
 
         // 6) Update jEAP codebuild images in GitHub Actions workflows
         executeOptionalStep(new UpdateJeapCodebuildImage(root, JAVA_VERSION + "-node-22"));
+
+        // 7) Update Maven Wrapper
+        executeStep(new UpdateMavenWrapper(root));
     }
 }
