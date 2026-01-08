@@ -22,6 +22,12 @@ The CLI will update itself regularly.
 - sudo installed if you want to install the CLI system-wide
 - Linux (tested on Ubuntu, works on most distributions) or Mac OS X
 
+## Available Commands
+
+| Command                                    | Description                           |
+|--------------------------------------------|---------------------------------------|
+| [migrate java-25](docs/migrate-java-25.md) | Migrate a jEAP application to Java 25 |
+
 ## Building
 
 To build the project
