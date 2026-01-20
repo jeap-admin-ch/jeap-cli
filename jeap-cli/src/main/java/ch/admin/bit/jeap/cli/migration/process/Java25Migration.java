@@ -8,6 +8,7 @@ import ch.admin.bit.jeap.cli.migration.step.maven.RunMaven;
 import ch.admin.bit.jeap.cli.migration.step.maven.SetJavaVersion;
 import ch.admin.bit.jeap.cli.migration.step.maven.UpdateJibBaseImage;
 import ch.admin.bit.jeap.cli.migration.step.mavenwrapper.UpdateMavenWrapper;
+import ch.admin.bit.jeap.cli.migration.step.sdkmanrc.UpdateSdkmanrc;
 import ch.admin.bit.jeap.cli.process.ProcessExecutor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -60,5 +61,8 @@ public class Java25Migration implements Migration {
 
         // 7) Update Maven Wrapper
         executeStep(new UpdateMavenWrapper(root));
+
+        // 8) Update .sdkmanrc to use Java 25
+        executeOptionalStep(new UpdateSdkmanrc(root, JAVA_VERSION));
     }
 }
