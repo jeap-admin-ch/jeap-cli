@@ -12,6 +12,9 @@ ARG MAVEN_VERSION=3.9.12
 ARG MAVEN_SHA=0a1be79f02466533fc1a80abbef8796e4f737c46c6574ede5658b110899942a94db634477dfd3745501c80aef9aac0d4f841d38574373f7e2d24cce89d694f70
 ARG MAVEN_URL=https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/${MAVEN_VERSION}/apache-maven-${MAVEN_VERSION}-bin.tar.gz
 
+# Note: curl/wget are used by the maven wrapper to download maven at runtime. They are thus part of the distributed image.
+# The fallback download mechanism using Java in maven wrapper does not work well with proxies.
+
 RUN --mount=type=secret,id=cacert,target=/etc/host-ca-bundle.crt \
     if [ -f /etc/host-ca-bundle.crt ]; then \
         echo "Adding host CA certificates to trust store..."; \
@@ -23,14 +26,13 @@ RUN --mount=type=secret,id=cacert,target=/etc/host-ca-bundle.crt \
     if [ -n "$HTTPS_PROXY" ]; then \
         echo "Acquire::https::Proxy \"$HTTPS_PROXY\";" >> /etc/apt/apt.conf.d/proxy.conf; \
     fi && \
-    apt-get update && apt-get install -y --no-install-recommends curl && \
+    apt-get update && apt-get install -y --no-install-recommends curl wget && \
     HTTP_PROXY=$HTTP_PROXY HTTPS_PROXY=$HTTPS_PROXY NO_PROXY=$NO_PROXY \
     curl -fsSL -o /tmp/apache-maven.tar.gz ${MAVEN_URL} && \
     echo "${MAVEN_SHA}  /tmp/apache-maven.tar.gz" | sha512sum -c - && \
     tar -xzf /tmp/apache-maven.tar.gz -C /opt && \
     ln -s /opt/apache-maven-${MAVEN_VERSION} /opt/maven && \
     rm -rf /tmp/* && \
-    apt-get remove -y curl && \
     apt-get autoremove -y && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /etc/apt/apt.conf.d/proxy.conf
