@@ -96,6 +96,16 @@ elif [[ -n "${JAVA_HOME:-}" && -f "$JAVA_HOME/lib/security/cacerts" ]]; then
   DOCKER_MOUNTS+=("-v" "$JAVA_HOME/lib/security/cacerts:/opt/java/openjdk/lib/security/cacerts")
 fi
 
+# Mount system CA certificates for corporate proxy support (disable with JEAP_CLI_NO_HOST_CERTS=1)
+if [[ -z "${JEAP_CLI_NO_HOST_CERTS:-}" ]]; then
+  if [[ -f "/etc/ssl/certs/ca-certificates.crt" ]]; then
+    DOCKER_MOUNTS+=("-v" "/etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro")
+  fi
+  if [[ -d "/etc/ssl/certs" ]]; then
+    DOCKER_MOUNTS+=("-v" "/etc/ssl/certs:/etc/ssl/certs:ro")
+  fi
+fi
+
 # Pass user UID/GID to be able to write to workspace files
 MY_UID=$(id -u)
 MY_GID=$(id -g)

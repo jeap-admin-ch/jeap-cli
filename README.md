@@ -22,6 +22,29 @@ The CLI will update itself regularly.
 - sudo installed if you want to install the CLI system-wide
 - Linux (tested on Ubuntu, works on most distributions) or Mac OS X
 
+## Configuration
+
+The CLI can be configured using environment variables:
+
+| Variable                 | Description                                                                       |
+|--------------------------|-----------------------------------------------------------------------------------|
+| `JEAP_CLI_IMAGE`         | Override the Docker image used (default: `ghcr.io/jeap-admin-ch/jeap-cli:latest`) |
+| `JEAP_CLI_VERBOSE`       | Enable verbose mode to show the Docker command being executed                     |
+| `JEAP_CLI_NO_HOST_CERTS` | Set to `1` to disable automatic mounting of host CA certificates                  |
+
+### Proxy and Certificate Support
+
+The CLI automatically:
+
+- Passes proxy environment variables (`HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY`) to the container
+- Mounts host CA certificates from `/etc/ssl/certs` for curl/wget to work behind corporate proxies
+
+To disable automatic certificate mounting use:
+
+```bash
+JEAP_CLI_NO_HOST_CERTS=1 ./jeap <command>
+```
+
 ## Available Commands
 
 | Command                                    | Description                           |
