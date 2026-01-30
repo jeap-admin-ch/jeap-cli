@@ -53,7 +53,13 @@ JEAP_CLI_NO_HOST_CERTS=1 ./jeap <command>
 
 ## Building
 
-To build the project
+This section describes how to build the jEAP CLI from source. Note that for native image builds and local CLI docker
+image builds, a GraalVM installation is required. When using SDKMAN, you can install GraalVM with the following command:
+
+```bash
+sdk install java 25-graalce
+sdk use java 25-graalce
+```
 
 ### Non-native build for Java Hotspot
 
