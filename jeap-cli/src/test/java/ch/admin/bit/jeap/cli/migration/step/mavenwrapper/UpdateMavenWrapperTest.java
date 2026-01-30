@@ -30,7 +30,7 @@ class UpdateMavenWrapperTest {
                 distributionUrl=https://repo.bit.admin.ch/repository/maven-central/org/apache/maven/apache-maven/3.9.12/apache-maven-3.9.12-bin.zip
                 distributionSha256Sum=foobar
                 wrapperSha256Sum=foobar
-                """.trim());
+                """);
 
         Path jvmConfigPath = tempDir.resolve(".mvn").resolve("jvm.config");
         assertTrue(Files.exists(jvmConfigPath), "jvm.config file should be created");
@@ -52,8 +52,8 @@ class UpdateMavenWrapperTest {
 
         String result = Files.readString(filePath);
         assertEquals(
-                "distributionUrl=https://repo.bit.admin.ch/repository/maven-central/org/apache/maven/apache-maven/3.9.12/apache-maven-3.9.12-bin.zip",
-                result.trim());
+                "distributionUrl=https://repo.bit.admin.ch/repository/maven-central/org/apache/maven/apache-maven/3.9.12/apache-maven-3.9.12-bin.zip\n",
+                result);
     }
 
     @Test
@@ -75,7 +75,7 @@ class UpdateMavenWrapperTest {
                 wrapperVersion=3.3.4
                 wrapperUrl=https://repo.bit.admin.ch/repository/maven-public/org/apache/maven/wrapper/maven-wrapper/3.3.4/maven-wrapper-3.3.4.jar
                 distributionUrl=https://repo.bit.admin.ch/repository/maven-central/org/apache/maven/apache-maven/3.9.12/apache-maven-3.9.12-bin.zip
-                """.trim(), result.trim());
+                """, result);
     }
 
     @Test
@@ -103,7 +103,7 @@ class UpdateMavenWrapperTest {
                 distributionUrl=https://repo.bit.admin.ch/repository/maven-central/org/apache/maven/apache-maven/3.9.12/apache-maven-3.9.12-bin.zip
                 distributionSha256Sum=foobar
                 wrapperSha256Sum=foobar
-                """.trim());
+                """);
 
         Path jvmConfigPath = tempDir.resolve(".mvn").resolve("jvm.config");
         assertTrue(Files.exists(jvmConfigPath), "jvm.config file should be created");
