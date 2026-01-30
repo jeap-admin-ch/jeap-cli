@@ -32,7 +32,7 @@ public class UpdateMavenWrapper implements Step {
             String updatedContent = Arrays.stream(content.split(System.lineSeparator()))
                     .map(line -> line.startsWith("distributionUrl=") ? line.replaceAll(REGEX_TO_REPLACE, CURRENT_MAVEN_VERSION) : line)
                     .collect(Collectors.joining("\n"));
-            Files.writeString(filePath, updatedContent);
+            Files.writeString(filePath, updatedContent + "\n");
 
             // Update or create jvm.config file
             updateJvmConfigFile(filePath.getParent().getParent());
