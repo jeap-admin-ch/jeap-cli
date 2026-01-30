@@ -118,6 +118,11 @@ for VAR in HTTP_PROXY HTTPS_PROXY NO_PROXY http_proxy https_proxy no_proxy; do
   fi
 done
 
+# Pass MVNW_VERBOSE to container when verbose mode is enabled
+if [[ -n "${JEAP_CLI_VERBOSE:-}" ]]; then
+  DOCKER_ENV_OPTS+=("-e" "MVNW_VERBOSE=true")
+fi
+
 # Build the complete docker command
 DOCKER_CMD=(
   docker run --rm

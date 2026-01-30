@@ -11,6 +11,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Automatically mount host CA certificates into the container to improve corporate proxy support
 - New environment variable `JEAP_CLI_NO_HOST_CERTS=1` to disable automatic host certificate mounting
+- Fix maven wrapper migration step to correctly update the .mvn/wrapper/maven-wrapper.properties file, keeping
+  newlines as required by the mvnw script.
 
 ## [1.0.0] - 2026-01-29
 
