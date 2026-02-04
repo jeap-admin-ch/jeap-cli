@@ -17,9 +17,13 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class UpdateMavenWrapper implements Step {
 
-    private static final String MAVEN_WRAPPER_PROPS_FILE = ".mvn/wrapper/maven-wrapper.properties";
     private static final String CURRENT_MAVEN_VERSION = "3.9.12";
+    private static final String CURRENT_MAVEN_VERSION_CHECKSUM = "305773a68d6ddfd413df58c82b3f8050e89778e777f3a745c8e5b8cbea4018ef";
+
+    private static final String MAVEN_WRAPPER_PROPS_FILE = ".mvn/wrapper/maven-wrapper.properties";
     private static final String REGEX_TO_REPLACE = "\\d+\\.\\d+\\.\\d+";
+    private static final String DISTRIBUTION_SHA_256_SUM = "distributionSha256Sum=";
+    private static final String DISTRIBUTION_URL = "distributionUrl=";
 
     private final Path rootDirectory;
 
@@ -30,13 +34,22 @@ public class UpdateMavenWrapper implements Step {
             log.info("Updating Maven Wrapper in file: {}", filePath);
             String content = Files.readString(filePath);
             String updatedContent = Arrays.stream(content.split(System.lineSeparator()))
-                    .map(line -> line.startsWith("distributionUrl=") ? line.replaceAll(REGEX_TO_REPLACE, CURRENT_MAVEN_VERSION) : line)
+                    .map(this::replaceContent)
                     .collect(Collectors.joining("\n"));
             Files.writeString(filePath, updatedContent + "\n");
 
             // Update or create jvm.config file
             updateJvmConfigFile(filePath.getParent().getParent());
         }
+    }
+
+    private String replaceContent(String line) {
+        if (line.startsWith(DISTRIBUTION_URL)) {
+            return line.replaceAll(REGEX_TO_REPLACE, CURRENT_MAVEN_VERSION);
+        } else if (line.startsWith(DISTRIBUTION_SHA_256_SUM)) {
+            return DISTRIBUTION_SHA_256_SUM + CURRENT_MAVEN_VERSION_CHECKSUM;
+        }
+        return line;
     }
 
     /**

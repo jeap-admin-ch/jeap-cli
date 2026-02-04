@@ -28,7 +28,7 @@ class UpdateMavenWrapperTest {
         String result = Files.readString(filePath);
         assertThat(result).isEqualTo("""
                 distributionUrl=https://repo.bit.admin.ch/repository/maven-central/org/apache/maven/apache-maven/3.9.12/apache-maven-3.9.12-bin.zip
-                distributionSha256Sum=foobar
+                distributionSha256Sum=305773a68d6ddfd413df58c82b3f8050e89778e777f3a745c8e5b8cbea4018ef
                 wrapperSha256Sum=foobar
                 """);
 
@@ -101,7 +101,7 @@ class UpdateMavenWrapperTest {
         String result = Files.readString(filePath);
         assertThat(result).isEqualTo("""
                 distributionUrl=https://repo.bit.admin.ch/repository/maven-central/org/apache/maven/apache-maven/3.9.12/apache-maven-3.9.12-bin.zip
-                distributionSha256Sum=foobar
+                distributionSha256Sum=305773a68d6ddfd413df58c82b3f8050e89778e777f3a745c8e5b8cbea4018ef
                 wrapperSha256Sum=foobar
                 """);
 
