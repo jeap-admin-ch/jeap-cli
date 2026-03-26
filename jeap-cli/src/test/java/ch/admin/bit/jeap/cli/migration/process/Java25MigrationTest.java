@@ -1,6 +1,7 @@
 package ch.admin.bit.jeap.cli.migration.process;
 
 import ch.admin.bit.jeap.cli.migration.Migration;
+import ch.admin.bit.jeap.cli.migration.step.maven.MavenPlugin;
 import ch.admin.bit.jeap.cli.process.FakeProcessExecutor;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -152,11 +153,12 @@ class Java25MigrationTest {
 
         FakeProcessExecutor.ExecutedCommand executedCommand = fakeExecutor.getLastExecutedCommand();
         assertEquals(List.of("mvn",
-                        "versions:2.19.1:update-parent",
+                        MavenPlugin.VERSIONS.goal("update-parent"),
                         "-Dincludes=ch.admin.bit.jeap",
-                        "-DgenerateBackupPoms=false"),
+                        "-DgenerateBackupPoms=false",
+                        "-Dversions.ignoredVersions=.*-[a-zA-Z].*"),
                 executedCommand.command(),
-                "Should execute Maven with correct parent update arguments");
+                "Should execute Maven with correct parent update arguments excluding qualified versions");
         assertEquals(tempDir, executedCommand.workingDirectory(),
                 "Maven should execute in the project root directory");
 

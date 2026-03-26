@@ -4,8 +4,8 @@ import ch.admin.bit.jeap.cli.migration.Migration;
 import ch.admin.bit.jeap.cli.migration.step.dockerfile.UpdateDockerfileJavaVersion;
 import ch.admin.bit.jeap.cli.migration.step.githubactions.UpdateJeapCodebuildImage;
 import ch.admin.bit.jeap.cli.migration.step.jenkinsfile.UpdateJenkinsfileMavenImage;
-import ch.admin.bit.jeap.cli.migration.step.maven.RunMaven;
 import ch.admin.bit.jeap.cli.migration.step.maven.SetJavaVersion;
+import ch.admin.bit.jeap.cli.migration.step.maven.UpdateJeapParent;
 import ch.admin.bit.jeap.cli.migration.step.maven.UpdateJibBaseImage;
 import ch.admin.bit.jeap.cli.migration.step.mavenwrapper.UpdateMavenWrapper;
 import ch.admin.bit.jeap.cli.migration.step.sdkmanrc.UpdateSdkmanrc;
@@ -37,11 +37,8 @@ public class Java25Migration implements Migration {
     }
 
     public void migrate(Path root) throws Exception {
-        // 1) Update jEAP parent using maven
-        executeStep(new RunMaven(root, processExecutor,
-                "versions:2.19.1:update-parent",
-                "-Dincludes=ch.admin.bit.jeap",
-                "-DgenerateBackupPoms=false"));
+        // 1) Update jEAP parent to latest stable version
+        executeStep(new UpdateJeapParent(root, processExecutor));
 
         // 2) Update java.version property in pom.xml to 25
         executeStep(new SetJavaVersion(root, JAVA_VERSION));
