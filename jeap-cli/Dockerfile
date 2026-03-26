@@ -26,7 +26,7 @@ RUN --mount=type=secret,id=cacert,target=/etc/host-ca-bundle.crt \
     if [ -n "$HTTPS_PROXY" ]; then \
         echo "Acquire::https::Proxy \"$HTTPS_PROXY\";" >> /etc/apt/apt.conf.d/proxy.conf; \
     fi && \
-    apt-get update && apt-get install -y --no-install-recommends curl wget unzip && \
+    apt-get update && apt-get install -y --no-install-recommends curl wget unzip git && \
     HTTP_PROXY=$HTTP_PROXY HTTPS_PROXY=$HTTPS_PROXY NO_PROXY=$NO_PROXY \
     curl -fsSL -o /tmp/apache-maven.tar.gz ${MAVEN_URL} && \
     echo "${MAVEN_SHA}  /tmp/apache-maven.tar.gz" | sha512sum -c - && \

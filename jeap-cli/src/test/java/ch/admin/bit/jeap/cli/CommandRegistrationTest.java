@@ -1,6 +1,7 @@
 package ch.admin.bit.jeap.cli;
 
 import ch.admin.bit.jeap.cli.migration.process.Java25Migration;
+import ch.admin.bit.jeap.cli.migration.process.SpringBoot4Migration;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
@@ -23,6 +24,9 @@ class CommandRegistrationTest {
     @MockitoBean
     Java25Migration java25Migration;
 
+    @MockitoBean
+    SpringBoot4Migration springBoot4Migration;
+
     @Test
     void test() {
         NonInteractiveShellSession session = client
@@ -32,6 +36,7 @@ class CommandRegistrationTest {
         await().atMost(15, SECONDS).untilAsserted(() ->
                 ShellAssertions.assertThat(session.screen())
                         .containsText("migrate java-25")
+                        .containsText("migrate spring-boot-4")
                         .containsText("AVAILABLE COMMANDS"));
     }
 }

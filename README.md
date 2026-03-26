@@ -47,9 +47,10 @@ JEAP_CLI_NO_HOST_CERTS=1 ./jeap <command>
 
 ## Available Commands
 
-| Command                                    | Description                           |
-|--------------------------------------------|---------------------------------------|
-| [migrate java-25](docs/migrate-java-25.md) | Migrate a jEAP application to Java 25 |
+| Command                                                | Description                                               |
+|--------------------------------------------------------|-----------------------------------------------------------|
+| [migrate java-25](docs/migrate-java-25.md)             | Migrate a jEAP application to Java 25                     |
+| [migrate spring-boot-4](docs/migrate-spring-boot-4.md) | Migrate a jEAP application to Spring Boot 4 (preliminary) |
 
 ## Building
 
@@ -86,7 +87,13 @@ The production CLI is deployed as a Docker image that includes the native execut
 For testing the resulting image in the local development environment, use the provided build script that handles both
 the native build and Docker image creation.
 
-Make sure your JAVA_HOME environment variable is set to a GraalVM JDK, and run the following command:
+Make sure your JAVA_HOME environment variable is set to a GraalVM JDK. For example by using sdkman:
+
+```bash
+sdk use java 25-graalce
+```
+
+Then run the following command:
 
 ```bash
 ./local-docker-image-build.sh
