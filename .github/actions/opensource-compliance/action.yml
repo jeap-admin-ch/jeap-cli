@@ -14,6 +14,10 @@ inputs:
     description: 'Whether to commit and push changes (typically true only on main branch)'
     required: false
     default: 'false'
+  publiccode-parser-version:
+    description: 'Version of publiccode-parser-go to use'
+    required: false
+    default: '5.3.0'
 
 outputs:
   files-updated:
@@ -33,6 +37,26 @@ runs:
         set -euo pipefail
         echo "Generating THIRD-PARTY-LICENSES.md"
         ./mvnw -B -ntp org.codehaus.mojo:license-maven-plugin:2.4.0:aggregate-add-third-party
+
+    - name: Cache publiccode-parser-go
+      uses: actions/cache@v4
+      with:
+        path: ${{ runner.tool_cache }}/publiccode-parser-go
+        key: publiccode-parser-go-v${{ inputs.publiccode-parser-version }}-linux-x86_64
+
+    - name: Download publiccode-parser-go
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [ ! -f ${{ runner.tool_cache }}/publiccode-parser-go/publiccode-parser ]; then
+          echo "Downloading publiccode-parser-go v${{ inputs.publiccode-parser-version }}"
+          mkdir -p ${{ runner.tool_cache }}/publiccode-parser-go
+          curl -sL "https://github.com/italia/publiccode-parser-go/releases/download/v${{ inputs.publiccode-parser-version }}/publiccode-parser-go_Linux_x86_64.tar.gz" \
+            | tar xz -C ${{ runner.tool_cache }}/publiccode-parser-go publiccode-parser
+          chmod +x ${{ runner.tool_cache }}/publiccode-parser-go/publiccode-parser
+        else
+          echo "publiccode-parser-go already cached"
+        fi
 
     - name: Validate and Update publiccode.yml
       shell: bash
@@ -84,7 +108,7 @@ runs:
         fi
 
         echo "Validating ${PC_YML} against the schema"
-        if ! docker run --rm -i italia/publiccode-parser-go -no-network /dev/stdin < "${PC_YML}"; then
+        if ! ${{ runner.tool_cache }}/publiccode-parser-go/publiccode-parser -no-network "${PC_YML}"; then
           echo "::error file=${PC_YML},title=PublicCode Validation Failed::${PC_YML} validation failed against the PublicCode schema. Check the validation output above for details."
           exit 1
         fi
