@@ -78,8 +78,8 @@ class SpringBoot4MigrationTest {
         assertEquals(List.of("mvn",
                         "-U",
                         MavenPlugin.OPENREWRITE.goal("run"),
-                        "-Drewrite.recipeArtifactCoordinates=org.openrewrite.recipe:rewrite-spring:RELEASE",
-                        "-Drewrite.activeRecipes=org.openrewrite.java.spring.boot4.UpgradeSpringBoot_4_0",
+                        "-Drewrite.recipeArtifactCoordinates=jeap-rewrite-recipes:ch.admin.bit.jeap.openrewrite.recipe:1.5.0,org.openrewrite.recipe:rewrite-spring:RELEASE",
+                        "-Drewrite.activeRecipes=ch.admin.bit.jeap.openrewrite.recipe.UpgradeSpringBoot_4_0_NoOtherMigrations",
                         "-Drewrite.exportDatatables=true"),
                 thirdCommand.command(),
                 "Third command should run the OpenRewrite Spring Boot 4 recipe");
