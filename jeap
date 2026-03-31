@@ -4,14 +4,14 @@ set -eo pipefail
 IMAGE="${JEAP_CLI_IMAGE:-ghcr.io/jeap-admin-ch/jeap-cli:latest}"
 MARKER_DIR="$HOME/.jeap"
 MARKER_FILE="$MARKER_DIR/.cli-update"  # Update marker file
-CHECK_WINDOW_SEC=$((2*24*60*60))       # 2 days in seconds
+CHECK_WINDOW_SEC=$((24*60*60))       # 1 day in seconds
 
 die() {
   echo "Error: $*" >&2
   exit 1
 }
 
-# Cross-platform mtime helper fuer Linux (GNU stat) und macOS (BSD stat)
+# Cross-platform mtime helper for Linux (GNU stat) and macOS (BSD stat)
 get_file_mtime() {
   local file="$1"
 
