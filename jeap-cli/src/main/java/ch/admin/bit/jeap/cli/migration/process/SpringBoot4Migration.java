@@ -31,7 +31,7 @@ public class SpringBoot4Migration implements Migration {
 
         // 3) Run OpenRewrite Spring Boot 4 migration
         executeStep(new RunOpenRewriteRecipe(root, processExecutor,
-                "org.openrewrite.recipe:rewrite-spring:RELEASE",
-                "org.openrewrite.java.spring.boot4.UpgradeSpringBoot_4_0"));
+                "jeap-rewrite-recipes:ch.admin.bit.jeap.openrewrite.recipe:1.5.0,org.openrewrite.recipe:rewrite-spring:RELEASE",
+                "ch.admin.bit.jeap.openrewrite.recipe.UpgradeSpringBoot_4_0_NoOtherMigrations"));
     }
 }
