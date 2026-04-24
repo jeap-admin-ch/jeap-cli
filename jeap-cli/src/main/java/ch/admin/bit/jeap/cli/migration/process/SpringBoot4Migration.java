@@ -4,6 +4,7 @@ import ch.admin.bit.jeap.cli.migration.Migration;
 import ch.admin.bit.jeap.cli.migration.step.maven.RunOpenRewriteRecipe;
 import ch.admin.bit.jeap.cli.migration.step.maven.UpdateJeapDependencies;
 import ch.admin.bit.jeap.cli.migration.step.maven.UpdateJeapParent;
+import ch.admin.bit.jeap.cli.migration.step.springproperties.ReplaceTextInSpringProperties;
 import ch.admin.bit.jeap.cli.process.ProcessExecutor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -33,5 +34,9 @@ public class SpringBoot4Migration implements Migration {
         executeStep(new RunOpenRewriteRecipe(root, processExecutor,
                 "ch.admin.bit.jeap.openrewrite.recipe:jeap-rewrite-recipes:1.5.0,org.openrewrite.recipe:rewrite-spring:RELEASE",
                 "ch.admin.bit.jeap.openrewrite.recipe.UpgradeSpringBoot_4_0_NoOtherMigrations"));
+
+        // 4) Override secrets location prefix in spring properties
+        executeStep(new ReplaceTextInSpringProperties(root,
+                "aws-secretsmanager:", "jeap-aws-secretsmanager:"));
     }
 }

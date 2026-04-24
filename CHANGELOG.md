@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-04-23
+
+### Changed
+
+- Extended Spring Boot 4 migration command to replace the `aws-secretsmanager:` Spring config import location prefix
+  with `jeap-aws-secretsmanager:` in all Spring property files (`application.yml`, `application.yaml`,
+  `application.properties` and profile-specific variants), resolving a conflict between the jEAP AWS config starter
+  and Spring Cloud AWS Secrets Manager
+
 ## [1.3.1] - 2026-03-31
 
 ### Changed
