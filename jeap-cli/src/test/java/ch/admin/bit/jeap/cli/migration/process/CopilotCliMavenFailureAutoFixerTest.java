@@ -37,7 +37,7 @@ class CopilotCliMavenFailureAutoFixerTest {
         runner.addCommandResult("gh auth status", 1, "not logged in");
         runner.addCommandResult("bash -lc curl -fsSL https://gh.io/copilot-install | bash", 0, "");
         runner.addCommandResult("gh auth login --web", 0, "");
-        runner.addCommandResult("copilot", 0, "");
+        runner.addCommandResult("copilot login", 0, "");
         runner.addCommandResult("gh auth status", 0, "ok");
         runner.addCopilotPromptResult("Please answer exactly with this single word: test", 0, "test");
 
@@ -48,7 +48,7 @@ class CopilotCliMavenFailureAutoFixerTest {
                         "gh auth status",
                         "bash -lc curl -fsSL https://gh.io/copilot-install | bash",
                         "gh auth login --web",
-                        "copilot",
+                        "copilot login",
                         "gh auth status",
                         "copilot::<PROMPT>"),
                 runner.executedCommands());
