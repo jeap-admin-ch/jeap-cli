@@ -155,7 +155,7 @@ public class PrepareForSpringBoot4ParentUpgrade implements Step {
     private Optional<String> resolveLatestVersionFromMavenCentral(DependencyCoordinate coordinate) {
         try {
             return dependencyVersionResolver.resolveLatestVersion(coordinate.groupId(), coordinate.artifactId());
-        } catch (IOException | InterruptedException e) {
+        } catch (IOException | InterruptedException | IllegalArgumentException e) {
             log.warn("Could not resolve latest version from Maven Central for {}:{} - falling back to existing project version", coordinate.groupId(), coordinate.artifactId());
             log.debug("Maven Central lookup error for {}:{}", coordinate.groupId(), coordinate.artifactId(), e);
             return Optional.empty();
@@ -450,7 +450,7 @@ public class PrepareForSpringBoot4ParentUpgrade implements Step {
 
     private static class MavenCentralVersionResolver implements DependencyVersionResolver {
         private static final String MAVEN_CENTRAL_URL_TEMPLATE =
-                "https://search.maven.org/solrsearch/select?q=g:%5C\"%s%5C\"+AND+a:%5C\"%s%5C\"&rows=20&core=gav&wt=json&sort=timestamp+desc";
+                "https://search.maven.org/solrsearch/select?q=g:%%22%s%%22+AND+a:%%22%s%%22&rows=20&core=gav&wt=json&sort=timestamp+desc";
 
         private final HttpClient httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(5))
