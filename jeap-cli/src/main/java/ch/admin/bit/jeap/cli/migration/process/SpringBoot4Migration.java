@@ -20,7 +20,7 @@ import static ch.admin.bit.jeap.cli.migration.Migrations.executeStep;
 @Slf4j
 public class SpringBoot4Migration implements Migration {
 
-    private static final int DEFAULT_MAX_AUTO_FIX_RETRIES = 3;
+    private static final int DEFAULT_MAX_AUTO_FIX_RETRIES = 25;
 
     private final ProcessExecutor processExecutor;
     private final MavenFailureAutoFixer mavenFailureAutoFixer;
@@ -43,20 +43,36 @@ public class SpringBoot4Migration implements Migration {
     public void migrate(Path root, boolean autoFixMavenFailures, int maxAutoFixRetries) throws Exception {
         int maxRetries = Math.max(0, maxAutoFixRetries);
         int attempt = 0;
+        if (autoFixMavenFailures && !mavenFailureAutoFixer.prepare(root)) {
+            throw new IllegalStateException("Copilot CLI is not available. Aborting Spring Boot 4 migration.");
+        }
 
         while (true) {
             try {
                 migrateOnce(root);
+                if (autoFixMavenFailures && attempt > 0) {
+                    log.info("Spring Boot 4 migration completed successfully after {} auto-fix iteration(s).", attempt);
+                }
                 return;
             } catch (MavenCommandException e) {
-                if (!autoFixMavenFailures || attempt >= maxRetries) {
+                if (!autoFixMavenFailures) {
+                    throw e;
+                }
+                if (attempt >= maxRetries) {
+                    log.error("Maven still failing after {} auto-fix iteration(s). Aborting migration.", maxRetries);
                     throw e;
                 }
                 attempt++;
+                log.warn("Maven migration failed in iteration {} with command '{}'.", attempt, e.getCommand());
+                if (!e.getOutput().isBlank()) {
+                    log.warn("Maven error output:\n{}", e.getOutput());
+                }
                 boolean fixed = mavenFailureAutoFixer.tryFix(root, e, attempt, maxRetries);
                 if (!fixed) {
+                    log.error("No usable Copilot fix found for iteration {}. Aborting migration.", attempt);
                     throw e;
                 }
+                log.info("Applied auto-fix for iteration {}. Retrying migration.", attempt);
             }
         }
     }

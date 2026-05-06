@@ -18,6 +18,10 @@ Added new Spring Boot 4 preparation step (`PrepareForSpringBoot4ParentUpgrade`) 
 - Replaced `com.github.tomakehurst:wiremock-jre8-standalone` with `org.wiremock:wiremock-standalone` during Spring Boot 4 migration
 - Renamed `spring-boot-starter-aop` to `spring-boot-starter-aspectj` during Spring Boot 4 migration
 - Removed local `<version>` declarations for dependencies that are now managed at project level
+- Added Spring Boot 4 auto-fix integration with GitHub Copilot CLI:
+  - validates/authenticates Copilot CLI only when `--auto-fix-errors-via-copilot-cli` is enabled
+  - installs standalone `copilot` CLI in the container image (not `gh` extension based)
+  - retries failed Maven migration steps iteratively with Copilot-assisted fixes
 
 ## [1.4.0] - 2026-04-23
 

@@ -9,5 +9,9 @@ import java.nio.file.Path;
  */
 public interface MavenFailureAutoFixer {
 
+    default boolean prepare(Path root) throws Exception {
+        return true;
+    }
+
     boolean tryFix(Path root, MavenCommandException failure, int attempt, int maxRetries) throws Exception;
 }
