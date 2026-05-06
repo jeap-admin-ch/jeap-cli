@@ -3,6 +3,7 @@ package ch.admin.bit.jeap.cli.commands;
 import ch.admin.bit.jeap.cli.migration.process.Java25Migration;
 import ch.admin.bit.jeap.cli.migration.process.SpringBoot4Migration;
 import org.springframework.shell.command.annotation.Command;
+import org.springframework.shell.command.annotation.Option;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -25,8 +26,14 @@ public class MigrationCommands {
     }
 
     @Command(description = "Migrate jEAP application to Spring Boot 4", command = "migrate spring-boot-4")
-    public void migrateToSpringBoot4() throws Exception {
+    public void migrateToSpringBoot4(
+            @Option(longNames = "auto-fix-errors-via-copilot-cli", defaultValue = "false",
+                    description = "Enable a retry loop that asks Copilot CLI to fix Maven failures")
+            boolean autoFixMavenErrors,
+            @Option(longNames = "auto-fix-max-retries", defaultValue = "3",
+                    description = "Maximum number of auto-fix retries after Maven failures")
+            int autoFixMaxRetries) throws Exception {
         Path cwd = Paths.get(".");
-        springBoot4Migration.migrate(cwd);
+        springBoot4Migration.migrate(cwd, autoFixMavenErrors, autoFixMaxRetries);
     }
 }

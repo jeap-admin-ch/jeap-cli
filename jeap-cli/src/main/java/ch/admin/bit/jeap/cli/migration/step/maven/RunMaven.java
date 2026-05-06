@@ -2,6 +2,7 @@ package ch.admin.bit.jeap.cli.migration.step.maven;
 
 import ch.admin.bit.jeap.cli.migration.step.Step;
 import ch.admin.bit.jeap.cli.process.ProcessExecutor;
+import ch.admin.bit.jeap.cli.process.ProcessExecutionResult;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -49,12 +50,23 @@ public class RunMaven implements Step {
         command.add(mavenCommand);
         command.addAll(mavenArgs);
 
-        int exitCode = processExecutor.execute(command, workingDirectory);
+        ProcessExecutionResult result = processExecutor.executeAndCapture(command, workingDirectory);
+        int exitCode = result.exitCode();
 
         if (exitCode != 0) {
-            throw new IOException("Maven command failed with exit code " + exitCode +
-                    ": " + mavenCommand + " " + String.join(" ", mavenArgs));
+            throw new MavenCommandException(exitCode,
+                    mavenCommand + " " + String.join(" ", mavenArgs),
+                    tail(result.combinedOutput(), 200));
         }
+    }
+
+    private String tail(String text, int maxLines) {
+        if (text == null || text.isBlank()) {
+            return "";
+        }
+        String[] lines = text.split("\\R");
+        int start = Math.max(0, lines.length - maxLines);
+        return String.join(System.lineSeparator(), List.of(lines).subList(start, lines.length));
     }
 
     @Override

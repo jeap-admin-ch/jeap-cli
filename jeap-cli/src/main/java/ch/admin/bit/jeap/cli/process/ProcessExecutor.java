@@ -22,4 +22,14 @@ public interface ProcessExecutor {
      * @throws InterruptedException if the current thread is interrupted while waiting for the process
      */
     int execute(List<String> command, Path workingDirectory) throws IOException, InterruptedException;
+
+    /**
+     * Executes a command and returns both exit code and combined output.
+     * Implementations may override this for native output capture.
+     */
+    default ProcessExecutionResult executeAndCapture(List<String> command, Path workingDirectory)
+            throws IOException, InterruptedException {
+        int exitCode = execute(command, workingDirectory);
+        return new ProcessExecutionResult(exitCode, "");
+    }
 }

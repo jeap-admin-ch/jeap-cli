@@ -13,6 +13,15 @@ Navigate to the root directory of your jEAP project and run:
 jeap migrate spring-boot-4
 ```
 
+Optional: enable automatic Maven error fixing with Copilot CLI and retry the migration loop:
+
+```bash
+jeap migrate spring-boot-4 --auto-fix-errors-via-copilot-cli --auto-fix-max-retries 3
+```
+
+If enabled, the migration retries when a Maven command fails, sends the Maven error tail to Copilot CLI,
+lets it apply file changes, and then restarts the migration.
+
 ## What It Does
 
 The migration performs the following steps:

@@ -17,12 +17,13 @@ public class FakeProcessExecutor implements ProcessExecutor {
 
     private final List<ExecutedCommand> executedCommands = new ArrayList<>();
     private BiFunction<List<String>, Path, Integer> exitCodeProvider;
+    private BiFunction<List<String>, Path, String> outputProvider;
 
     /**
      * Creates a FakeProcessExecutor that always returns exit code 0 (success).
      */
     public FakeProcessExecutor() {
-        this((cmd, dir) -> 0);
+        this((cmd, dir) -> 0, (cmd, dir) -> "");
     }
 
     /**
@@ -31,7 +32,14 @@ public class FakeProcessExecutor implements ProcessExecutor {
      * @param exitCode the exit code to return for all executions
      */
     public FakeProcessExecutor(int exitCode) {
-        this((cmd, dir) -> exitCode);
+        this((cmd, dir) -> exitCode, (cmd, dir) -> "");
+    }
+
+    /**
+     * Creates a FakeProcessExecutor with a fixed exit code and fixed output.
+     */
+    public FakeProcessExecutor(int exitCode, String output) {
+        this((cmd, dir) -> exitCode, (cmd, dir) -> output);
     }
 
     /**
@@ -40,14 +48,31 @@ public class FakeProcessExecutor implements ProcessExecutor {
      * @param exitCodeProvider function that takes command and working directory and returns an exit code
      */
     public FakeProcessExecutor(BiFunction<List<String>, Path, Integer> exitCodeProvider) {
+        this(exitCodeProvider, (cmd, dir) -> "");
+    }
+
+    public FakeProcessExecutor(BiFunction<List<String>, Path, Integer> exitCodeProvider,
+                               BiFunction<List<String>, Path, String> outputProvider) {
         this.exitCodeProvider = exitCodeProvider;
+        this.outputProvider = outputProvider;
     }
 
     @Override
     public int execute(List<String> command, Path workingDirectory) throws IOException, InterruptedException {
+        return run(command, workingDirectory).exitCode();
+    }
+
+    @Override
+    public ProcessExecutionResult executeAndCapture(List<String> command, Path workingDirectory)
+            throws IOException, InterruptedException {
+        return run(command, workingDirectory);
+    }
+
+    private ProcessExecutionResult run(List<String> command, Path workingDirectory) {
         ExecutedCommand executedCommand = new ExecutedCommand(List.copyOf(command), workingDirectory);
         executedCommands.add(executedCommand);
-        return exitCodeProvider.apply(command, workingDirectory);
+        return new ProcessExecutionResult(exitCodeProvider.apply(command, workingDirectory),
+                outputProvider.apply(command, workingDirectory));
     }
 
     /**

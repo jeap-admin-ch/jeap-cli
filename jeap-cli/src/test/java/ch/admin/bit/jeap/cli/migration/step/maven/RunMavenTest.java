@@ -42,18 +42,20 @@ class RunMavenTest {
     @Test
     void testFailedMavenExecution() {
         // Given a fake process executor that returns failure
-        FakeProcessExecutor fakeExecutor = new FakeProcessExecutor(1);
+        FakeProcessExecutor fakeExecutor = new FakeProcessExecutor(1, "[ERROR] missing class");
         Step runMaven = new RunMaven(tempDir, fakeExecutor, "test");
 
         // When executing the step
         // Then it should throw an IOException
-        IOException exception = assertThrows(IOException.class, runMaven::execute,
+        MavenCommandException exception = assertThrows(MavenCommandException.class, runMaven::execute,
                 "Failed Maven execution should throw IOException");
 
         assertTrue(exception.getMessage().contains("Maven command failed with exit code 1"),
                 "Exception message should contain exit code");
         assertTrue(exception.getMessage().contains("mvn test"),
                 "Exception message should contain Maven command");
+        assertTrue(exception.getOutput().contains("missing class"),
+                "Exception should include captured Maven output");
     }
 
     @Test
