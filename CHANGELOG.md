@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-05-06
+
+### Added
+
+Added new Spring Boot 4 preparation step (`PrepareForSpringBoot4ParentUpgrade`) executed before parent/dependency updates
+- Set jEAP parent to `34.6.0-alpha-springboot4` at the start of preparation so Spring Boot 4 managed dependencies can be resolved
+- Added automatic project-level `dependencyManagement` entries for dependencies no longer managed by Spring Boot/jEAP parent
+- Added optional resolution of latest stable dependency versions from Maven Central (with fallback to existing project versions)
+- Added TODO comments to generated `dependencyManagement` entries to prompt manual verification of explicit management and selected version
+- Added/updated unit tests for Spring Boot 4 preparation behavior
+- Replaced `com.github.tomakehurst:wiremock-jre8-standalone` with `org.wiremock:wiremock-standalone` during Spring Boot 4 migration
+- Renamed `spring-boot-starter-aop` to `spring-boot-starter-aspectj` during Spring Boot 4 migration
+- Removed local `<version>` declarations for dependencies that are now managed at project level
+
 ## [1.4.0] - 2026-04-23
 
 ### Changed

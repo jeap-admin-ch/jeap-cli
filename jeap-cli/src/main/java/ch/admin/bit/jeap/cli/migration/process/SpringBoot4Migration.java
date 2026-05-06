@@ -1,6 +1,7 @@
 package ch.admin.bit.jeap.cli.migration.process;
 
 import ch.admin.bit.jeap.cli.migration.Migration;
+import ch.admin.bit.jeap.cli.migration.step.maven.PrepareForSpringBoot4ParentUpgrade;
 import ch.admin.bit.jeap.cli.migration.step.maven.RunOpenRewriteRecipe;
 import ch.admin.bit.jeap.cli.migration.step.maven.UpdateJeapDependencies;
 import ch.admin.bit.jeap.cli.migration.step.maven.UpdateJeapParent;
@@ -24,6 +25,12 @@ public class SpringBoot4Migration implements Migration {
     }
 
     public void migrate(Path root) throws Exception {
+        // 0) Prepare pom.xml files: pins the jEAP parent to the Spring Boot 4 alpha version,
+        //    replaces/removes dependencies that changed their managed state, and renames artifacts
+        //    that were renamed in Spring Boot 4, so that the parent upgrade in step 1 can resolve
+        //    all dependencies without conflicts.
+        executeStep(new PrepareForSpringBoot4ParentUpgrade(root));
+
         // 1) Update jEAP parent to latest version (including qualified versions like -alpha)
         executeStep(new UpdateJeapParent(root, processExecutor, true));
 
