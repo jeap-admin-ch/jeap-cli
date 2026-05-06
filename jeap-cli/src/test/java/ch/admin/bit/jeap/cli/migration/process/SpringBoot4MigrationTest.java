@@ -108,6 +108,8 @@ class SpringBoot4MigrationTest {
                 "First run fails at first Maven step, second run should complete all three Maven steps");
         assertEquals(1, autoFixer.invocations,
                 "Auto-fixer should be invoked exactly once for one failed attempt");
+        assertEquals(1, autoFixer.preparations,
+                "Auto-fixer setup should be validated once when auto-fix mode is enabled");
     }
 
     @Test
@@ -122,6 +124,23 @@ class SpringBoot4MigrationTest {
         assertThrows(Exception.class, () -> migration.migrate(tempDir, true, 2));
         assertEquals(1, autoFixer.invocations,
                 "Auto-fixer should be invoked once before aborting");
+        assertEquals(1, autoFixer.preparations,
+                "Auto-fixer setup should be validated once when auto-fix mode is enabled");
+    }
+
+    @Test
+    void testAutoFixAbortsWhenCopilotCliSetupFails() throws Exception {
+        Path pomPath = tempDir.resolve("pom.xml");
+        Files.writeString(pomPath, minimalPom());
+
+        FakeProcessExecutor fakeExecutor = new FakeProcessExecutor(0);
+        RecordingAutoFixer autoFixer = new RecordingAutoFixer(true, false);
+        SpringBoot4Migration migration = new SpringBoot4Migration(fakeExecutor, autoFixer);
+
+        assertThrows(IllegalStateException.class, () -> migration.migrate(tempDir, true, 2));
+        assertEquals(1, autoFixer.preparations, "Auto-fixer setup must be attempted once");
+        assertEquals(0, autoFixer.invocations, "No fix attempt should happen when setup fails");
+        assertEquals(0, fakeExecutor.getExecutionCount(), "Migration should abort before Maven execution");
     }
 
     private static String minimalPom() {
@@ -145,10 +164,23 @@ class SpringBoot4MigrationTest {
 
     private static class RecordingAutoFixer implements MavenFailureAutoFixer {
         private final boolean result;
+        private final boolean preparationResult;
         private int invocations;
+        private int preparations;
 
         private RecordingAutoFixer(boolean result) {
+            this(result, true);
+        }
+
+        private RecordingAutoFixer(boolean result, boolean preparationResult) {
             this.result = result;
+            this.preparationResult = preparationResult;
+        }
+
+        @Override
+        public boolean prepare(Path root) {
+            preparations++;
+            return preparationResult;
         }
 
         @Override
