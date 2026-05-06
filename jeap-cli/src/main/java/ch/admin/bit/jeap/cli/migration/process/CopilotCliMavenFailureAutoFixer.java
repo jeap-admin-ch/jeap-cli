@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.List;
@@ -23,7 +22,7 @@ public class CopilotCliMavenFailureAutoFixer implements MavenFailureAutoFixer {
     private static final List<String> AUTH_STATUS_COMMAND = List.of("gh", "auth", "status");
     private static final String COPILOT_HEALTH_PROMPT = "Please answer exactly with this single word: test";
     private static final List<String> GH_AUTH_LOGIN_WEB_COMMAND = List.of("gh", "auth", "login", "--web");
-    private static final List<String> COPILOT_INTERACTIVE_LOGIN_COMMAND = List.of("copilot");
+    private static final List<String> COPILOT_LOGIN_COMMAND = List.of("copilot", "login");
     private static final List<String> COPILOT_INSTALL_COMMAND =
             List.of("bash", "-lc", "curl -fsSL https://gh.io/copilot-install | bash");
 
@@ -52,8 +51,7 @@ public class CopilotCliMavenFailureAutoFixer implements MavenFailureAutoFixer {
         if (!runInteractive(root, GH_AUTH_LOGIN_WEB_COMMAND, "gh auth login --web")) {
             return false;
         }
-        if (!runInteractive(root, COPILOT_INTERACTIVE_LOGIN_COMMAND,
-                "copilot (use /login, then /exit)")) {
+        if (!runInteractive(root, COPILOT_LOGIN_COMMAND, "copilot login")) {
             return false;
         }
 
@@ -204,28 +202,9 @@ public class CopilotCliMavenFailureAutoFixer implements MavenFailureAutoFixer {
 
         @Override
         public CommandResult runCopilotPrompt(Path root, String prompt) throws Exception {
-            ProcessBuilder processBuilder = new ProcessBuilder("copilot")
-                    .directory(root.toFile())
-                    .redirectErrorStream(true);
-            Process process = processBuilder.start();
-
-            try (OutputStreamWriter writer = new OutputStreamWriter(process.getOutputStream(), StandardCharsets.UTF_8)) {
-                writer.write(prompt);
-                writer.write(System.lineSeparator());
-                writer.flush();
-            }
-
-            StringBuilder output = new StringBuilder();
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(
-                    process.getInputStream(), StandardCharsets.UTF_8))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    System.out.println(line);
-                    output.append(line).append(System.lineSeparator());
-                }
-            }
-
-            return new CommandResult(process.waitFor(), output.toString());
+            // Run in non-interactive mode with full permissions so auto-fix can edit files
+            // without waiting for permission prompts.
+            return run(root, List.of("copilot", "-p", prompt, "--allow-all", "--no-ask-user"), false);
         }
     }
 }
