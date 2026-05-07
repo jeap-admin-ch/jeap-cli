@@ -1,6 +1,7 @@
 package ch.admin.bit.jeap.cli.migration.step.maven;
 
 import ch.admin.bit.jeap.cli.migration.step.Step;
+import ch.admin.bit.jeap.cli.process.SystemProcessExecutor;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -19,8 +20,8 @@ public class PrepareForSpringBoot4ParentUpgrade implements Step {
     // DEPENDENCIES_TO_PROJECT_MANAGE lists coordinates that are *no longer*
     // managed (or managed at a different version) by the new parent BOMs and
     // therefore need an explicit <dependencyManagement> entry in the project.
-    // The resolved version is fetched from Maven Central to match whatever the
-    // new parents expect. When the target parent versions change, review this
+    // The resolved version is looked up through Maven itself to respect project
+    // settings (mirrors, proxies, custom CAs). When the target parent versions change, review this
     // list: dependencies re-added to the BOM must be removed here; newly
     // unmanaged dependencies must be added.
     //
@@ -54,7 +55,7 @@ public class PrepareForSpringBoot4ParentUpgrade implements Step {
     private final List<Step> subSteps;
 
     public PrepareForSpringBoot4ParentUpgrade(Path rootDirectory) {
-        this(rootDirectory, new EnsureProjectDependencyManagement.MavenCentralVersionResolver());
+        this(rootDirectory, new EnsureProjectDependencyManagement.MavenCentralVersionResolver(rootDirectory, new SystemProcessExecutor()));
     }
 
     PrepareForSpringBoot4ParentUpgrade(Path rootDirectory,
