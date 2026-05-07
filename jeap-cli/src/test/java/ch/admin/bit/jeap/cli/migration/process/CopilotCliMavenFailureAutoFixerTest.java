@@ -32,12 +32,24 @@ class CopilotCliMavenFailureAutoFixerTest {
     }
 
     @Test
-    void testPrepareRunsLoginAndSetupWhenValidationFailsInitially() throws Exception {
+    void testPrepareInstallsAndLoginWhenNothingPresent() throws Exception {
         RecordingRunner runner = new RecordingRunner();
+        // isCopilotCliReady #1: gh auth status fails
         runner.addCommandResult("gh auth status", 1, "not logged in");
+        // isCopilotInstalled: not installed
+        runner.addCommandResult("bash -lc command -v copilot", 1, "");
+        // install: success
         runner.addCommandResult("bash -lc curl -fsSL https://gh.io/copilot-install | bash", 0, "");
+        // isGhAuthReady: not ready
+        runner.addCommandResult("gh auth status", 1, "");
+        // gh auth login: success (interactive)
         runner.addCommandResult("gh auth login --web", 0, "");
+        // isCopilotCliReady #2: auth ok but copilot health fails
+        runner.addCommandResult("gh auth status", 0, "ok");
+        runner.addCopilotPromptResult("Please answer exactly with this single word: test", 1, "");
+        // copilot login: success (interactive)
         runner.addCommandResult("copilot login", 0, "");
+        // isCopilotCliReady #3: all good
         runner.addCommandResult("gh auth status", 0, "ok");
         runner.addCopilotPromptResult("Please answer exactly with this single word: test", 0, "test");
 
@@ -46,20 +58,50 @@ class CopilotCliMavenFailureAutoFixerTest {
         assertTrue(fixer.prepare(tempDir));
         assertEquals(List.of(
                         "gh auth status",
+                        "bash -lc command -v copilot",
                         "bash -lc curl -fsSL https://gh.io/copilot-install | bash",
+                        "gh auth status",
                         "gh auth login --web",
+                        "gh auth status",
                         "copilot login",
                         "gh auth status",
+                        "copilot::<PROMPT>",
                         "copilot::<PROMPT>"),
                 runner.executedCommands());
-        assertEquals(List.of(false, false, true, true, false), runner.interactiveFlags());
+        assertEquals(List.of(false, false, false, false, true, false, true, false), runner.interactiveFlags());
     }
 
     @Test
-    void testPrepareFailsWhenLoginFails() throws Exception {
+    void testPrepareFailsWhenInstallFails() throws Exception {
         RecordingRunner runner = new RecordingRunner();
+        // isCopilotCliReady #1: gh auth status fails
         runner.addCommandResult("gh auth status", 1, "not logged in");
-        runner.addCommandResult("bash -lc curl -fsSL https://gh.io/copilot-install | bash", 0, "");
+        // isCopilotInstalled: not installed
+        runner.addCommandResult("bash -lc command -v copilot", 1, "");
+        // install: FAILS
+        runner.addCommandResult("bash -lc curl -fsSL https://gh.io/copilot-install | bash", 1, "install error");
+
+        CopilotCliMavenFailureAutoFixer fixer = new CopilotCliMavenFailureAutoFixer(runner);
+
+        assertFalse(fixer.prepare(tempDir));
+        assertEquals(List.of(
+                        "gh auth status",
+                        "bash -lc command -v copilot",
+                        "bash -lc curl -fsSL https://gh.io/copilot-install | bash"),
+                runner.executedCommands());
+        assertEquals(List.of(false, false, false), runner.interactiveFlags());
+    }
+
+    @Test
+    void testPrepareFailsWhenGhLoginFails() throws Exception {
+        RecordingRunner runner = new RecordingRunner();
+        // isCopilotCliReady #1: gh auth status fails
+        runner.addCommandResult("gh auth status", 1, "not logged in");
+        // isCopilotInstalled: already installed
+        runner.addCommandResult("bash -lc command -v copilot", 0, "/usr/local/bin/copilot");
+        // isGhAuthReady: not ready
+        runner.addCommandResult("gh auth status", 1, "");
+        // gh auth login: FAILS (interactive)
         runner.addCommandResult("gh auth login --web", 1, "login failed");
 
         CopilotCliMavenFailureAutoFixer fixer = new CopilotCliMavenFailureAutoFixer(runner);
@@ -67,10 +109,42 @@ class CopilotCliMavenFailureAutoFixerTest {
         assertFalse(fixer.prepare(tempDir));
         assertEquals(List.of(
                         "gh auth status",
-                        "bash -lc curl -fsSL https://gh.io/copilot-install | bash",
+                        "bash -lc command -v copilot",
+                        "gh auth status",
                         "gh auth login --web"),
                 runner.executedCommands());
-        assertEquals(List.of(false, false, true), runner.interactiveFlags());
+        assertEquals(List.of(false, false, false, true), runner.interactiveFlags());
+    }
+
+    @Test
+    void testPrepareSkipsInstallWhenCopilotAlreadyInstalled() throws Exception {
+        RecordingRunner runner = new RecordingRunner();
+        // isCopilotCliReady #1: gh auth status fails
+        runner.addCommandResult("gh auth status", 1, "not logged in");
+        // isCopilotInstalled: already installed
+        runner.addCommandResult("bash -lc command -v copilot", 0, "/usr/local/bin/copilot");
+        // isGhAuthReady: not ready
+        runner.addCommandResult("gh auth status", 1, "");
+        // gh auth login: success (interactive)
+        runner.addCommandResult("gh auth login --web", 0, "");
+        // isCopilotCliReady #2: auth ok, copilot health passes
+        runner.addCommandResult("gh auth status", 0, "ok");
+        runner.addCopilotPromptResult("Please answer exactly with this single word: test", 0, "test");
+
+        CopilotCliMavenFailureAutoFixer fixer = new CopilotCliMavenFailureAutoFixer(runner);
+
+        assertTrue(fixer.prepare(tempDir));
+        assertEquals(List.of(
+                        "gh auth status",
+                        "bash -lc command -v copilot",
+                        "gh auth status",
+                        "gh auth login --web",
+                        "gh auth status",
+                        "copilot::<PROMPT>"),
+                runner.executedCommands());
+        assertEquals(List.of(false, false, false, true, false), runner.interactiveFlags());
+        // Verify install was NOT called
+        assertTrue(runner.executedCommands().stream().noneMatch(c -> c.contains("copilot-install")));
     }
 
     @Test

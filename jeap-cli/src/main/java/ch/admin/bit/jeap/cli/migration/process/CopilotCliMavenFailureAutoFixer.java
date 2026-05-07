@@ -25,6 +25,8 @@ public class CopilotCliMavenFailureAutoFixer implements MavenFailureAutoFixer {
     private static final List<String> COPILOT_LOGIN_COMMAND = List.of("copilot", "login");
     private static final List<String> COPILOT_INSTALL_COMMAND =
             List.of("bash", "-lc", "curl -fsSL https://gh.io/copilot-install | bash");
+    private static final List<String> COPILOT_IS_INSTALLED_COMMAND =
+            List.of("bash", "-lc", "command -v copilot");
 
     private final CliCommandRunner commandRunner;
 
@@ -42,23 +44,31 @@ public class CopilotCliMavenFailureAutoFixer implements MavenFailureAutoFixer {
             return true;
         }
 
-        log.warn("Copilot CLI is not ready in the container. Installing GitHub Copilot CLI now.");
-        if (!runNonInteractive(root, COPILOT_INSTALL_COMMAND, "Copilot CLI installation")) {
-            return false;
+        if (!isCopilotInstalled(root)) {
+            log.info("Copilot CLI not found in container, installing on demand...");
+            if (!runNonInteractive(root, COPILOT_INSTALL_COMMAND, "Copilot CLI installation")) {
+                return false;
+            }
         }
 
-        log.warn("Please complete authentication in the container now.");
-        if (!runInteractive(root, GH_AUTH_LOGIN_WEB_COMMAND, "gh auth login --web")) {
-            return false;
-        }
-        if (!runInteractive(root, COPILOT_LOGIN_COMMAND, "copilot login")) {
-            return false;
+        if (!isGhAuthReady(root)) {
+            log.info("GitHub authentication required.");
+            if (!runInteractive(root, GH_AUTH_LOGIN_WEB_COMMAND, "gh auth login --web")) {
+                return false;
+            }
         }
 
         if (!isCopilotCliReady(root)) {
-            log.error("Copilot CLI setup completed but validation still fails. Aborting.");
-            return false;
+            log.info("Copilot CLI login required.");
+            if (!runInteractive(root, COPILOT_LOGIN_COMMAND, "copilot login")) {
+                return false;
+            }
+            if (!isCopilotCliReady(root)) {
+                log.error("Copilot CLI setup completed but validation still fails. Aborting.");
+                return false;
+            }
         }
+
         return true;
     }
 
@@ -87,6 +97,14 @@ public class CopilotCliMavenFailureAutoFixer implements MavenFailureAutoFixer {
             log.info("Applied fix:\n{}", fixSummary);
         }
         return true;
+    }
+
+    private boolean isCopilotInstalled(Path root) throws Exception {
+        return commandRunner.run(root, COPILOT_IS_INSTALLED_COMMAND, false).exitCode() == 0;
+    }
+
+    private boolean isGhAuthReady(Path root) throws Exception {
+        return commandRunner.run(root, AUTH_STATUS_COMMAND, false).exitCode() == 0;
     }
 
     private boolean isCopilotCliReady(Path root) throws Exception {
