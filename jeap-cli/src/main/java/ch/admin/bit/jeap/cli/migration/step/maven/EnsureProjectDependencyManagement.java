@@ -1,18 +1,16 @@
 package ch.admin.bit.jeap.cli.migration.step.maven;
 
 import ch.admin.bit.jeap.cli.migration.step.Step;
+import ch.admin.bit.jeap.cli.process.ProcessExecutionResult;
+import ch.admin.bit.jeap.cli.process.ProcessExecutor;
+import ch.admin.bit.jeap.cli.process.SystemProcessExecutor;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
-import java.net.URI;
-import java.net.URLEncoder;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Duration;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -35,7 +33,6 @@ import java.util.stream.Stream;
 class EnsureProjectDependencyManagement implements Step {
 
     private static final String POM_XML_FILE = "pom.xml";
-    private static final Pattern MAVEN_CENTRAL_VERSION_PATTERN = Pattern.compile("\\\"v\\\":\\\"([^\\\"]+)\\\"");
 
     private final Path rootDirectory;
     private final List<String> dependenciesToManage;
@@ -265,42 +262,84 @@ class EnsureProjectDependencyManagement implements Step {
     }
 
     static class MavenCentralVersionResolver implements DependencyVersionResolver {
-        private static final String MAVEN_CENTRAL_URL_TEMPLATE =
-                "https://search.maven.org/solrsearch/select?q=g:%%22%s%%22+AND+a:%%22%s%%22&rows=20&core=gav&wt=json&sort=timestamp+desc";
+        private static final Pattern VERSION_PATTERN = Pattern.compile("<version>\\s*([^<]+)\\s*</version>");
+        private static final String VERSIONS_PLUGIN_GOAL =
+                "org.codehaus.mojo:versions-maven-plugin:2.18.0:use-latest-releases";
 
-        private final HttpClient httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(5))
-                .build();
+        private final ProcessExecutor processExecutor;
+        private final String mavenCommand;
+
+        MavenCentralVersionResolver() {
+            this(Path.of("."), new SystemProcessExecutor());
+        }
+
+        MavenCentralVersionResolver(Path rootDirectory, ProcessExecutor processExecutor) {
+            this.processExecutor = processExecutor;
+            Path mvnw = rootDirectory.resolve("mvnw");
+            this.mavenCommand = Files.exists(mvnw) && Files.isExecutable(mvnw) ? mvnw.toAbsolutePath().toString() : "mvn";
+        }
 
         @Override
         public Optional<String> resolveLatestVersion(String groupId, String artifactId) throws IOException, InterruptedException {
-            String encodedGroupId = URLEncoder.encode(groupId, StandardCharsets.UTF_8);
-            String encodedArtifactId = URLEncoder.encode(artifactId, StandardCharsets.UTF_8);
-            String url = MAVEN_CENTRAL_URL_TEMPLATE.formatted(encodedGroupId, encodedArtifactId);
+            Path tempDir = Files.createTempDirectory("jeap-version-resolver-");
+            Path tempPom = tempDir.resolve(POM_XML_FILE);
+            try {
+                Files.writeString(tempPom, temporaryPom(groupId, artifactId), StandardCharsets.UTF_8);
 
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(url))
-                    .timeout(Duration.ofSeconds(8))
-                    .header("Accept", "application/json")
-                    .GET()
-                    .build();
+                List<String> command = List.of(
+                        mavenCommand,
+                        "-f", tempPom.toString(),
+                        "-q",
+                        "-DgenerateBackupPoms=false",
+                        "-DprocessDependencyManagement=false",
+                        "-DallowSnapshots=false",
+                        "-Dincludes=" + groupId + ":" + artifactId,
+                        VERSIONS_PLUGIN_GOAL
+                );
 
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-            if (response.statusCode() != 200) {
-                return Optional.empty();
+                ProcessExecutionResult result = processExecutor.executeAndCapture(command, tempDir);
+                if (result.exitCode() != 0) {
+                    return Optional.empty();
+                }
+
+                String updatedPom = Files.readString(tempPom, StandardCharsets.UTF_8);
+                return extractResolvedVersion(updatedPom)
+                        .filter(this::isStableVersion);
+            } finally {
+                deleteDirectoryQuietly(tempDir);
             }
-            return extractLatestStableVersion(response.body());
         }
 
-        private Optional<String> extractLatestStableVersion(String responseBody) {
-            Matcher matcher = MAVEN_CENTRAL_VERSION_PATTERN.matcher(responseBody);
-            while (matcher.find()) {
-                String candidate = matcher.group(1);
-                if (isStableVersion(candidate)) {
-                    return Optional.of(candidate);
-                }
+        private String temporaryPom(String groupId, String artifactId) {
+            return """
+                    <?xml version="1.0" encoding="UTF-8"?>
+                    <project xmlns="http://maven.apache.org/POM/4.0.0"
+                             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                             xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+                        <modelVersion>4.0.0</modelVersion>
+                        <groupId>ch.admin.bit.jeap.cli</groupId>
+                        <artifactId>version-resolver</artifactId>
+                        <version>1.0.0</version>
+                        <dependencies>
+                            <dependency>
+                                <groupId>%s</groupId>
+                                <artifactId>%s</artifactId>
+                                <version>0.0.0</version>
+                            </dependency>
+                        </dependencies>
+                    </project>
+                    """.formatted(groupId, artifactId);
+        }
+
+        private Optional<String> extractResolvedVersion(String pomContent) {
+            Matcher matcher = VERSION_PATTERN.matcher(pomContent);
+            if (!matcher.find()) {
+                return Optional.empty();
             }
-            return Optional.empty();
+            if (!matcher.find()) {
+                return Optional.empty();
+            }
+            return Optional.of(matcher.group(1).trim());
         }
 
         private boolean isStableVersion(String version) {
@@ -311,6 +350,21 @@ class EnsureProjectDependencyManagement implements Step {
                     !lowered.contains("rc") &&
                     !lowered.contains("milestone") &&
                     !lowered.matches(".*\\bm\\d+.*");
+        }
+
+        private void deleteDirectoryQuietly(Path directory) {
+            try (Stream<Path> stream = Files.walk(directory)) {
+                stream.sorted(Comparator.reverseOrder())
+                        .forEach(path -> {
+                            try {
+                                Files.deleteIfExists(path);
+                            } catch (IOException ignored) {
+                                // Best-effort cleanup only.
+                            }
+                        });
+            } catch (IOException ignored) {
+                // Best-effort cleanup only.
+            }
         }
     }
 }
