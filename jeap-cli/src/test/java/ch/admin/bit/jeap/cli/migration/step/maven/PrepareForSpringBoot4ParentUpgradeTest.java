@@ -1,10 +1,13 @@
 package ch.admin.bit.jeap.cli.migration.step.maven;
 
+import ch.admin.bit.jeap.cli.migration.step.Step;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Matcher;
@@ -18,6 +21,20 @@ class PrepareForSpringBoot4ParentUpgradeTest {
 
     @TempDir
     Path tempDir;
+
+    @Test
+    void executesSubStepsInOrder() throws Exception {
+        List<String> executed = new ArrayList<>();
+        PrepareForSpringBoot4ParentUpgrade step = new PrepareForSpringBoot4ParentUpgrade(List.of(
+                namedStep("one", executed),
+                namedStep("two", executed),
+                namedStep("three", executed)
+        ));
+
+        step.execute();
+
+        assertEquals(List.of("one", "two", "three"), executed);
+    }
 
     @Test
     void addsProjectLevelDependencyManagementAndRemovesLocalVersionsInModules() throws Exception {
@@ -152,7 +169,10 @@ class PrepareForSpringBoot4ParentUpgradeTest {
         return new PrepareForSpringBoot4ParentUpgrade(tempDir,
                 (groupId, artifactId) -> Optional.ofNullable(resolvedVersions.get(groupId + ":" + artifactId)));
     }
-}
 
+    private Step namedStep(String name, List<String> executed) {
+        return () -> executed.add(name);
+    }
+}
 
 
