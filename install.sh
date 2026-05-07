@@ -87,6 +87,10 @@ fi
 echo
 echo "You can now run it using: ${SCRIPT_NAME} [args]"
 echo
+echo "Runtime state is persisted in:"
+echo "  GH auth / Copilot CLI: \$HOME/.jeap-gh-config  (override: JEAP_GH_CONFIG_DIR)"
+echo "  Maven cache:           \$HOME/.m2              (override: JEAP_M2_DIR)"
+echo
 
 # Run CLI to test the installation
 "${INSTALL_DIR}/${SCRIPT_NAME}" help

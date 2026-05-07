@@ -6,6 +6,11 @@ MARKER_DIR="$HOME/.jeap"
 MARKER_FILE="$MARKER_DIR/.cli-update"  # Update marker file
 CHECK_WINDOW_SEC=$((24*60*60))       # 1 day in seconds
 
+# Persistent host directories for container runtime state.
+# Override via environment variable if a different location is needed.
+JEAP_GH_CONFIG_DIR="${JEAP_GH_CONFIG_DIR:-$HOME/.jeap-gh-config}"
+JEAP_M2_DIR="${JEAP_M2_DIR:-$HOME/.m2}"
+
 die() {
   echo "Error: $*" >&2
   exit 1
@@ -42,6 +47,9 @@ fi
 command -v docker >/dev/null 2>&1 || die "docker is not installed or not on PATH"
 mkdir -p "$MARKER_DIR"
 
+# Ensure persistent host directories exist before mounting them
+mkdir -p "${JEAP_GH_CONFIG_DIR}" "${JEAP_M2_DIR}"
+
 # 1) Ensure image exists locally (pull if missing) only if JEAP_CLI_IMAGE is not set
 if [[ -z "${JEAP_CLI_IMAGE:-}" ]]; then
   if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
@@ -73,10 +81,11 @@ fi
 WORKDIR="$(pwd)"
 DOCKER_MOUNTS=("-v" "$WORKDIR:/workspace:rw")
 
-# Mount maven config and local repository
-if [[ -d "$HOME/.m2" ]]; then
-  DOCKER_MOUNTS+=("-v" "$HOME/.m2:/home/jeapcli/.m2:rw")
-fi
+# Mount maven config and local repository (persistent across runs)
+DOCKER_MOUNTS+=("-v" "${JEAP_M2_DIR}:/home/jeapcli/.m2:rw")
+
+# Mount GH config for persistent Copilot CLI / gh auth credentials
+DOCKER_MOUNTS+=("-v" "${JEAP_GH_CONFIG_DIR}:/home/jeapcli/.config/gh:rw")
 
 # Mount npm config and caches
 if [[ -f "$HOME/.npmrc" ]]; then
