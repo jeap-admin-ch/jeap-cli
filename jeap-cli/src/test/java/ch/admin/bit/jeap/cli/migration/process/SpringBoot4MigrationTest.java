@@ -49,9 +49,9 @@ class SpringBoot4MigrationTest {
         Migration migration = new SpringBoot4Migration(fakeExecutor);
         migration.migrate(tempDir);
 
-        // Then three Maven commands should have been executed
-        assertEquals(3, fakeExecutor.getExecutionCount(),
-                "Should have executed three Maven commands");
+        // Then four Maven commands should have been executed
+        assertEquals(4, fakeExecutor.getExecutionCount(),
+                "Should have executed four Maven commands");
 
         // First command: update parent
         FakeProcessExecutor.ExecutedCommand firstCommand = fakeExecutor.getExecutedCommands().get(0);
@@ -87,6 +87,14 @@ class SpringBoot4MigrationTest {
                 "Third command should run the OpenRewrite Spring Boot 4 recipe");
         assertEquals(tempDir, thirdCommand.workingDirectory(),
                 "Maven should execute in the project root directory");
+
+        // Fourth command: Maven install after OpenRewrite
+        FakeProcessExecutor.ExecutedCommand fourthCommand = fakeExecutor.getExecutedCommands().get(3);
+        assertEquals(List.of("mvn", "install"),
+                fourthCommand.command(),
+                "Fourth command should run Maven install");
+        assertEquals(tempDir, fourthCommand.workingDirectory(),
+                "Maven should execute in the project root directory");
     }
 
     @Test
@@ -104,12 +112,45 @@ class SpringBoot4MigrationTest {
 
         migration.migrate(tempDir, true, 2);
 
-        assertEquals(4, fakeExecutor.getExecutionCount(),
-                "First run fails at first Maven step, second run should complete all three Maven steps");
+        assertEquals(5, fakeExecutor.getExecutionCount(),
+                "First run fails at first Maven step, second run should complete all four Maven steps");
         assertEquals(1, autoFixer.invocations,
                 "Auto-fixer should be invoked exactly once for one failed attempt");
         assertEquals(1, autoFixer.preparations,
                 "Auto-fixer setup should be validated once when auto-fix mode is enabled");
+    }
+
+    @Test
+    void testAutoFixResumesFromFailedStepWithoutRepeatingCompletedSteps() throws Exception {
+        Path pomPath = tempDir.resolve("pom.xml");
+        Files.writeString(pomPath, minimalPom());
+
+        AtomicInteger rewriteAttempts = new AtomicInteger();
+        FakeProcessExecutor fakeExecutor = new FakeProcessExecutor((cmd, dir) -> {
+            boolean isOpenRewrite = cmd.contains(MavenPlugin.OPENREWRITE.goal("run"));
+            if (isOpenRewrite && rewriteAttempts.incrementAndGet() == 1) {
+                return 1;
+            }
+            return 0;
+        }, (cmd, dir) -> "[ERROR] rewrite failure");
+
+        RecordingAutoFixer autoFixer = new RecordingAutoFixer(true);
+        SpringBoot4Migration migration = new SpringBoot4Migration(fakeExecutor, autoFixer);
+
+        migration.migrate(tempDir, true, 2);
+
+        assertEquals(5, fakeExecutor.getExecutionCount(),
+                "After OpenRewrite failure, retry should continue from OpenRewrite and not rerun completed steps");
+        assertEquals(1, autoFixer.invocations, "Auto-fixer should be invoked once");
+        assertEquals(2, fakeExecutor.getExecutedCommands().stream()
+                        .filter(command -> command.command().contains(MavenPlugin.OPENREWRITE.goal("run")))
+                        .count(),
+                "OpenRewrite should run once per attempt");
+        assertEquals(1, fakeExecutor.getExecutedCommands().stream()
+                        .filter(command -> command.command().equals(List.of("mvn", MavenPlugin.VERSIONS.goal("update-parent"),
+                                "-Dincludes=ch.admin.bit.jeap", "-DgenerateBackupPoms=false")))
+                        .count(),
+                "Update parent step must not be repeated after it already succeeded");
     }
 
     @Test
