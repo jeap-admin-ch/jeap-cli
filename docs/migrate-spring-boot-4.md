@@ -16,12 +16,15 @@ jeap migrate spring-boot-4
 Optional: enable automatic Maven error fixing with Copilot CLI and retry the migration loop:
 
 ```bash
-jeap migrate spring-boot-4 --auto-fix-errors-via-copilot-cli --auto-fix-max-retries 3
+jeap migrate spring-boot-4 --auto-fix-errors-via-copilot-cli --auto-fix-max-retries 25
 ```
 
-If enabled, the migration retries when a Maven command fails: it sends the extracted Maven error output to
-GitHub Copilot CLI, lets it apply file changes, and then resumes the migration from the failed step —
-already completed steps are **not** repeated.
+### Options
+
+| Flag                                | Default | Description                                                                                                                                                                                                                                                          |
+|-------------------------------------|---------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `--auto-fix-errors-via-copilot-cli` | `false` | Enable a retry loop that asks Copilot CLI to fix Maven failures. When a Maven command fails, the error output is sent to GitHub Copilot CLI, which applies file changes. The migration then resumes from the failed step — already completed steps are not repeated. |
+| `--auto-fix-max-retries`            | `25`    | Maximum number of auto-fix retry attempts after Maven failures. Only relevant when `--auto-fix-errors-via-copilot-cli` is set.                                                                                                                                       |
 
 ## What It Does
 
@@ -29,14 +32,11 @@ The migration performs the following steps in order:
 
 1. **Prepare pom.xml for Spring Boot 4 parent upgrade** — prepares all `pom.xml` files before the parent version
    switch. This step:
-   - Sets the jEAP parent version in the root `pom.xml` to the Spring Boot 4 alpha version
-     (`jeap-spring-boot-parent`: `34.6.0-alpha-springboot4`, `jeap-internal-spring-boot-parent`:
-     `7.0.7-alpha-springboot4`)
-   - Adds explicit `<dependencyManagement>` entries for dependencies that are no longer managed by the new
-     parent (e.g. `commons-io`, `commons-compress`, `jose4j`)
-   - Renames or replaces dependencies that changed their artifact coordinates in Spring Boot 4
-     (e.g. `wiremock-jre8-standalone` → `wiremock-standalone`, `spring-boot-starter-aop` →
-     `spring-boot-starter-aspectj`)
+    - Sets the jEAP parent version in the root `pom.xml` to the target Spring Boot 4 alpha version
+      (`jeap-spring-boot-parent` or `jeap-internal-spring-boot-parent`, depending on which is used)
+    - Adds explicit `<dependencyManagement>` entries for dependencies that are no longer managed by the new
+      parent BOMs
+    - Renames or replaces dependencies whose artifact coordinates changed in Spring Boot 4
 
 2. **Update jEAP Parent** — updates the jEAP parent POM to the latest version using Maven's versions plugin
 
