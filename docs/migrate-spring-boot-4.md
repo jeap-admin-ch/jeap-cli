@@ -44,8 +44,7 @@ The migration performs the following steps in order:
    dependencies with an explicitly declared version in the project are updated — dependencies managed by the
    parent POM are not affected.
 
-4. **Run OpenRewrite Spring Boot 4 Recipe** — runs the [OpenRewrite](https://docs.openrewrite.org/)
-   `UpgradeSpringBoot_4_0` recipe to automatically migrate Spring Boot application code, configuration,
+4. **Run jEAP OpenRewrite Spring Boot 4 Recipe** to automatically migrate Spring Boot application code, configuration,
    and dependencies
 
 5. **Replace secrets location prefix in Spring properties** — replaces `aws-secretsmanager:` with
