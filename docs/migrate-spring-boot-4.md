@@ -13,18 +13,6 @@ Navigate to the root directory of your jEAP project and run:
 jeap migrate spring-boot-4
 ```
 
-Optional: enable automatic Maven error fixing with Copilot CLI and retry the migration loop:
-
-```bash
-jeap migrate spring-boot-4 --auto-fix-errors-via-copilot-cli --auto-fix-max-retries 25
-```
-
-### Options
-
-| Flag                                | Default | Description                                                                                                                                                                                                                                                          |
-|-------------------------------------|---------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `--auto-fix-errors-via-copilot-cli` | `false` | Enable a retry loop that asks Copilot CLI to fix Maven failures. When a Maven command fails, the error output is sent to GitHub Copilot CLI, which applies file changes. The migration then resumes from the failed step — already completed steps are not repeated. |
-| `--auto-fix-max-retries`            | `25`    | Maximum number of auto-fix retry attempts after Maven failures. Only relevant when `--auto-fix-errors-via-copilot-cli` is set.                                                                                                                                       |
 
 ## What It Does
 
