@@ -45,22 +45,6 @@ To disable automatic certificate mounting use:
 JEAP_CLI_NO_HOST_CERTS=1 ./jeap <command>
 ```
 
-## Copilot CLI Integration
-
-The `migrate spring-boot-4` command supports automatic Maven error fixing via GitHub Copilot CLI
-(enabled with `--auto-fix-errors-via-copilot-cli`).
-
-**Copilot CLI is not bundled in the Docker image.** It is installed on demand the first time
-auto-fix is requested:
-
-1. The container checks whether Copilot CLI is available (`command -v copilot`).
-2. If missing, it installs the CLI via `curl -fsSL https://gh.io/copilot-install | bash`.
-3. If GitHub authentication is not present (`gh auth status`), an interactive login flow is started.
-4. If Copilot CLI login is still required, `copilot login` is run interactively.
-
-**Login state is persisted** across container runs via the mounted GH config directory
-(`~/.jeap-gh-config` on the host → `/home/jeapcli/.config/gh` in the container).
-This means you only need to log in once; subsequent runs reuse the stored credentials.
 
 ## Available Commands
 

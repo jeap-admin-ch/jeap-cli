@@ -26,14 +26,8 @@ public class MigrationCommands {
     }
 
     @Command(description = "Migrate jEAP application to Spring Boot 4", command = "migrate spring-boot-4")
-    public void migrateToSpringBoot4(
-            @Option(longNames = "auto-fix-errors-via-copilot-cli", defaultValue = "false",
-                    description = "Enable a retry loop that asks Copilot CLI to fix Maven failures")
-            boolean autoFixMavenErrors,
-            @Option(longNames = "auto-fix-max-retries", defaultValue = "25",
-                    description = "Maximum number of auto-fix retries after Maven failures")
-            int autoFixMaxRetries) throws Exception {
+    public void migrateToSpringBoot4() throws Exception {
         Path cwd = Paths.get(".");
-        springBoot4Migration.migrate(cwd, autoFixMavenErrors, autoFixMaxRetries);
+        springBoot4Migration.migrate(cwd);
     }
 }
