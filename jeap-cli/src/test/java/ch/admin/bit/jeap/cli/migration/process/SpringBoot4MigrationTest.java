@@ -97,29 +97,6 @@ class SpringBoot4MigrationTest {
                 "Maven should execute in the project root directory");
     }
 
-    // REMOVED: testAutoFixRetriesMigrationAfterMavenFailure (auto-fix feature removed)
-    // @Test
-    // void testAutoFixRetriesMigrationAfterMavenFailure() throws Exception {
-    //     ...
-    // }
-
-    // REMOVED: testAutoFixResumesFromFailedStepWithoutRepeatingCompletedSteps (auto-fix feature removed)
-    // @Test
-    // void testAutoFixResumesFromFailedStepWithoutRepeatingCompletedSteps() throws Exception {
-    //     ...
-    // }
-
-    // REMOVED: testAutoFixStopsWhenFixerDeclinesRetry (auto-fix feature removed)
-    // @Test
-    // void testAutoFixStopsWhenFixerDeclinesRetry() throws Exception {
-    //     ...
-    // }
-
-    // REMOVED: testAutoFixAbortsWhenCopilotCliSetupFails (auto-fix feature removed)
-    // @Test
-    // void testAutoFixAbortsWhenCopilotCliSetupFails() throws Exception {
-    //     ...
-    // }
 
     private static String minimalPom() {
         return """
@@ -140,32 +117,5 @@ class SpringBoot4MigrationTest {
                 """;
     }
 
-    private static class RecordingAutoFixer implements MavenFailureAutoFixer {
-        private final boolean result;
-        private final boolean preparationResult;
-        private int invocations;
-        private int preparations;
 
-        private RecordingAutoFixer(boolean result) {
-            this(result, true);
-        }
-
-        private RecordingAutoFixer(boolean result, boolean preparationResult) {
-            this.result = result;
-            this.preparationResult = preparationResult;
-        }
-
-        @Override
-        public boolean prepare(Path root) {
-            preparations++;
-            return preparationResult;
-        }
-
-        @Override
-        public boolean tryFix(Path root, ch.admin.bit.jeap.cli.migration.step.maven.MavenCommandException failure,
-                              int attempt, int maxRetries) {
-            invocations++;
-            return result;
-        }
-    }
 }
