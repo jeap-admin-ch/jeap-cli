@@ -21,25 +21,17 @@ public class SpringBoot4Migration implements Migration {
     // private static final int DEFAULT_MAX_AUTO_FIX_RETRIES = 25;
 
     private final ProcessExecutor processExecutor;
-    private final RetryingMavenStepExecutor stepExecutor;
 
     @Autowired
     public SpringBoot4Migration(ProcessExecutor processExecutor) {
-        this(processExecutor, new CopilotCliMavenFailureAutoFixer());
-    }
-
-    SpringBoot4Migration(ProcessExecutor processExecutor, MavenFailureAutoFixer mavenFailureAutoFixer) {
-        this(processExecutor, new RetryingMavenStepExecutor(mavenFailureAutoFixer, "Spring Boot 4 migration"));
-    }
-
-    SpringBoot4Migration(ProcessExecutor processExecutor, RetryingMavenStepExecutor stepExecutor) {
         this.processExecutor = processExecutor;
-        this.stepExecutor = stepExecutor;
     }
 
     @Override
     public void migrate(Path root) throws Exception {
-        stepExecutor.execute(root, migrationSteps(root), false, 0);
+        for (Step step : migrationSteps(root)) {
+            step.execute();
+        }
     }
 
     /**
