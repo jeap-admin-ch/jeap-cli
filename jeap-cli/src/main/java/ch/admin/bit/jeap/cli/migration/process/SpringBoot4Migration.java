@@ -18,8 +18,6 @@ import java.util.List;
 @Component
 public class SpringBoot4Migration implements Migration {
 
-    // private static final int DEFAULT_MAX_AUTO_FIX_RETRIES = 25;
-
     private final ProcessExecutor processExecutor;
 
     @Autowired
@@ -32,14 +30,6 @@ public class SpringBoot4Migration implements Migration {
         for (Step step : migrationSteps(root)) {
             step.execute();
         }
-    }
-
-    /**
-     * @deprecated Copilot CLI auto-fix is no longer supported. Remove --auto-fix-errors-via-copilot-cli and --auto-fix-max-retries.
-     */
-    @Deprecated
-    public void migrate(Path root, boolean autoFixMavenFailures, int maxAutoFixRetries) throws Exception {
-        throw new UnsupportedOperationException("Copilot CLI auto-fix is no longer supported. Remove --auto-fix-errors-via-copilot-cli and --auto-fix-max-retries.");
     }
 
     private List<Step> migrationSteps(Path root) {
