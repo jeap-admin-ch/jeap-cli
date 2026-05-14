@@ -9,8 +9,10 @@ import org.junit.jupiter.api.io.TempDir;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class SpringBoot4MigrationTest {
 
@@ -47,9 +49,9 @@ class SpringBoot4MigrationTest {
         Migration migration = new SpringBoot4Migration(fakeExecutor);
         migration.migrate(tempDir);
 
-        // Then three Maven commands should have been executed
-        assertEquals(3, fakeExecutor.getExecutionCount(),
-                "Should have executed three Maven commands");
+        // Then four Maven commands should have been executed
+        assertEquals(4, fakeExecutor.getExecutionCount(),
+                "Should have executed four Maven commands");
 
         // First command: update parent
         FakeProcessExecutor.ExecutedCommand firstCommand = fakeExecutor.getExecutedCommands().get(0);
@@ -85,5 +87,35 @@ class SpringBoot4MigrationTest {
                 "Third command should run the OpenRewrite Spring Boot 4 recipe");
         assertEquals(tempDir, thirdCommand.workingDirectory(),
                 "Maven should execute in the project root directory");
+
+        // Fourth command: Maven install after OpenRewrite
+        FakeProcessExecutor.ExecutedCommand fourthCommand = fakeExecutor.getExecutedCommands().get(3);
+        assertEquals(List.of("mvn", "install"),
+                fourthCommand.command(),
+                "Fourth command should run Maven install");
+        assertEquals(tempDir, fourthCommand.workingDirectory(),
+                "Maven should execute in the project root directory");
     }
+
+
+    private static String minimalPom() {
+        return """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <project xmlns="http://maven.apache.org/POM/4.0.0">
+                    <modelVersion>4.0.0</modelVersion>
+
+                    <parent>
+                        <groupId>ch.admin.bit.jeap</groupId>
+                        <artifactId>jeap-internal-spring-boot-parent</artifactId>
+                        <version>5.14.0</version>
+                    </parent>
+
+                    <groupId>ch.admin.bit.jeap</groupId>
+                    <artifactId>test-project</artifactId>
+                    <version>1.0.0</version>
+                </project>
+                """;
+    }
+
+
 }

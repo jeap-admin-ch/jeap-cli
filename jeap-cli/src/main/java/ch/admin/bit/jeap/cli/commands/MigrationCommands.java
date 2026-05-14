@@ -3,6 +3,7 @@ package ch.admin.bit.jeap.cli.commands;
 import ch.admin.bit.jeap.cli.migration.process.Java25Migration;
 import ch.admin.bit.jeap.cli.migration.process.SpringBoot4Migration;
 import org.springframework.shell.command.annotation.Command;
+import org.springframework.shell.command.annotation.Option;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
