@@ -26,13 +26,22 @@ class UpdatePomDependencies implements Step {
     private final Path rootDirectory;
     private final Supplier<Set<String>> projectManagedDependenciesSupplier;
     private final List<DependencyReplacement> dependencyReplacements;
+    private final List<String> dependenciesToRemove;
 
     UpdatePomDependencies(Path rootDirectory,
                           Supplier<Set<String>> projectManagedDependenciesSupplier,
                           List<DependencyReplacement> dependencyReplacements) {
+        this(rootDirectory, projectManagedDependenciesSupplier, dependencyReplacements, List.of());
+    }
+
+    UpdatePomDependencies(Path rootDirectory,
+                          Supplier<Set<String>> projectManagedDependenciesSupplier,
+                          List<DependencyReplacement> dependencyReplacements,
+                          List<String> dependenciesToRemove) {
         this.rootDirectory = rootDirectory;
         this.projectManagedDependenciesSupplier = projectManagedDependenciesSupplier;
         this.dependencyReplacements = dependencyReplacements;
+        this.dependenciesToRemove = dependenciesToRemove;
     }
 
     @Override
@@ -60,6 +69,8 @@ class UpdatePomDependencies implements Step {
         String original = Files.readString(pomPath, StandardCharsets.UTF_8);
         String content = original;
 
+        content = applyGenericTestcontainersRename(content);
+
         for (DependencyReplacement replacement : dependencyReplacements) {
             content = applyReplacement(content, replacement);
         }
@@ -69,10 +80,43 @@ class UpdatePomDependencies implements Step {
             content = removeVersionFromDependency(content, parts[0], parts[1]);
         }
 
+        for (String coordinate : dependenciesToRemove) {
+            String[] parts = splitCoordinate(coordinate);
+            content = removeDependencyBlock(content, parts[0], parts[1]);
+        }
+
         if (!content.equals(original)) {
             Files.writeString(pomPath, content, StandardCharsets.UTF_8);
             log.info("Updated pom.xml dependency declarations in {}", pomPath);
         }
+    }
+
+    private String applyGenericTestcontainersRename(String content) {
+        Pattern pattern = Pattern.compile(
+                "(<dependency>\\s*<groupId>\\s*org\\.testcontainers\\s*</groupId>\\s*<artifactId>\\s*)([^<\\s]+)(\\s*</artifactId>)",
+                Pattern.DOTALL);
+
+        Matcher matcher = pattern.matcher(content);
+        StringBuilder sb = new StringBuilder();
+        boolean replaced = false;
+
+        while (matcher.find()) {
+            int matchStart = matcher.start();
+            boolean isProjectDependency = !isInsideDependencyManagement(content, matchStart)
+                    && !isInsidePluginDependencies(content, matchStart);
+
+            String artifactId = matcher.group(2);
+            if (isProjectDependency && !artifactId.startsWith("testcontainers-") && !artifactId.equals("testcontainers")) {
+                String rep = matcher.group(1) + "testcontainers-" + artifactId + matcher.group(3);
+                matcher.appendReplacement(sb, Matcher.quoteReplacement(rep));
+                replaced = true;
+                log.debug("Generically renamed Testcontainers artifactId {} to testcontainers-{}", artifactId, artifactId);
+            } else {
+                matcher.appendReplacement(sb, Matcher.quoteReplacement(matcher.group(0)));
+            }
+        }
+        matcher.appendTail(sb);
+        return replaced ? sb.toString() : content;
     }
 
     private String applyReplacement(String content, DependencyReplacement replacement) {
@@ -179,6 +223,46 @@ class UpdatePomDependencies implements Step {
         Pattern groupPattern = Pattern.compile("<groupId>\\s*" + Pattern.quote(groupId) + "\\s*</groupId>");
         Pattern artifactPattern = Pattern.compile("<artifactId>\\s*" + Pattern.quote(artifactId) + "\\s*</artifactId>");
         return groupPattern.matcher(depBlock).find() && artifactPattern.matcher(depBlock).find();
+    }
+
+    /**
+     * Removes the entire {@code <dependency>...</dependency>} block (including its preceding line
+     * indentation and trailing newline) for the given coordinates from outside dependency management.
+     */
+    private String removeDependencyBlock(String content, String groupId, String artifactId) {
+        Pattern depPattern = Pattern.compile("(<dependency>)(.*?)(</dependency>)", Pattern.DOTALL);
+        Matcher matcher = depPattern.matcher(content);
+        StringBuilder sb = new StringBuilder();
+        int lastEnd = 0;
+        boolean changed = false;
+
+        while (matcher.find()) {
+            String depBlock = matcher.group(0);
+            int matchStart = matcher.start();
+            boolean isProjectDependency = !isInsideDependencyManagement(content, matchStart)
+                    && !isInsidePluginDependencies(content, matchStart);
+
+            if (isProjectDependency && containsGroupAndArtifact(depBlock, groupId, artifactId)) {
+                // Back up to the start of the line (strip leading whitespace on that line)
+                int wsStart = matchStart;
+                while (wsStart > lastEnd && content.charAt(wsStart - 1) != '\n') {
+                    wsStart--;
+                }
+                sb.append(content, lastEnd, wsStart);
+                lastEnd = matcher.end();
+                // Consume the trailing newline so no blank line is left behind
+                if (lastEnd < content.length() && content.charAt(lastEnd) == '\n') {
+                    lastEnd++;
+                }
+                changed = true;
+                log.debug("Removed dependency {}:{}", groupId, artifactId);
+            } else {
+                sb.append(content, lastEnd, matcher.end());
+                lastEnd = matcher.end();
+            }
+        }
+        sb.append(content, lastEnd, content.length());
+        return changed ? sb.toString() : content;
     }
 
     private String[] splitCoordinate(String coordinate) {

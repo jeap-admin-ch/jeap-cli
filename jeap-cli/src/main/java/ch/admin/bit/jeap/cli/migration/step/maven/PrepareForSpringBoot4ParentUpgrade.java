@@ -29,10 +29,10 @@ public class PrepareForSpringBoot4ParentUpgrade implements Step {
     // that the new parents introduced. Again, when the target versions change,
     // verify that every rename still applies and remove any that were reverted.
     // -------------------------------------------------------------------------
-    static final String JEAP_SPRING_BOOT_PARENT_SB4_VERSION = "34.6.0-alpha-springboot4";
-    static final String JEAP_INTERNAL_SPRING_BOOT_PARENT_SB4_VERSION = "7.0.7-alpha-springboot4";
+    static final String JEAP_SPRING_BOOT_PARENT_SB4_VERSION = "35.0.0";
+    static final String JEAP_INTERNAL_SPRING_BOOT_PARENT_SB4_VERSION = "7.0.0";
 
-    private static final Map<String, String> SPRING_BOOT_4_ALPHA_PARENT_VERSIONS = Map.of(
+    private static final Map<String, String> SPRING_BOOT_4_PARENT_VERSIONS = Map.of(
             "jeap-spring-boot-parent", JEAP_SPRING_BOOT_PARENT_SB4_VERSION,
             "jeap-internal-spring-boot-parent", JEAP_INTERNAL_SPRING_BOOT_PARENT_SB4_VERSION
     );
@@ -43,13 +43,20 @@ public class PrepareForSpringBoot4ParentUpgrade implements Step {
             "commons-beanutils:commons-beanutils",
             "org.lz4:lz4-java",
             "at.yawk.lz4:lz4-java",
-            "org.bitbucket.b_c:jose4j"
+            "org.bitbucket.b_c:jose4j",
+            "org.hibernate.orm:hibernate-jpamodelgen"
     );
 
     private static final List<DependencyReplacement> DEPENDENCY_REPLACEMENTS = List.of(
             DependencyReplacement.replace("com.github.tomakehurst", "wiremock-jre8-standalone",
                     "org.wiremock", "wiremock-standalone"),
             DependencyReplacement.renameArtifact("spring-boot-starter-aop", "spring-boot-starter-aspectj")
+    );
+
+    // Dependencies removed in the new parent/BOM that must be dropped from project pom.xml files.
+    // testcontainers 2.x folded the JUnit Jupiter integration into the core testcontainers artifact.
+    private static final List<String> DEPENDENCIES_TO_REMOVE = List.of(
+            "org.testcontainers:junit-jupiter"
     );
 
     private final List<Step> subSteps;
@@ -63,9 +70,9 @@ public class PrepareForSpringBoot4ParentUpgrade implements Step {
         EnsureProjectDependencyManagement ensureDependencyManagement =
                 new EnsureProjectDependencyManagement(rootDirectory, DEPENDENCIES_TO_PROJECT_MANAGE, dependencyVersionResolver);
         this.subSteps = List.of(
-                new SetJeapParentVersion(rootDirectory, SPRING_BOOT_4_ALPHA_PARENT_VERSIONS),
+                new SetJeapParentVersion(rootDirectory, SPRING_BOOT_4_PARENT_VERSIONS),
                 ensureDependencyManagement,
-                new UpdatePomDependencies(rootDirectory, ensureDependencyManagement::projectManagedDependencies, DEPENDENCY_REPLACEMENTS)
+                new UpdatePomDependencies(rootDirectory, ensureDependencyManagement::projectManagedDependencies, DEPENDENCY_REPLACEMENTS, DEPENDENCIES_TO_REMOVE)
         );
     }
 

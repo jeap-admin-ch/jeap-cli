@@ -27,13 +27,13 @@
     <parent>
         <groupId>ch.admin.bit.jeap</groupId>
         <artifactId>jeap-internal-spring-boot-parent</artifactId>
-        <version>5.15.1</version>
+        <version>6.0.5</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
 
     <properties>
         <java.version>25</java.version>
-        <spring-shell.version>3.4.1</spring-shell.version>
+        <spring-shell.version>3.4.2</spring-shell.version>
         <maven.javadoc.skip>false</maven.javadoc.skip>
         <maven.compiler.release>25</maven.compiler.release>
     </properties>

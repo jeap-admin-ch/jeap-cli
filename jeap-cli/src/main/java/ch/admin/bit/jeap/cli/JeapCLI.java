@@ -9,7 +9,7 @@ import org.springframework.shell.command.annotation.EnableCommand;
 @EnableCommand(MigrationCommands.class)
 public class JeapCLI {
 
-	public static void main(String[] args) {
+	static void main(String[] args) {
         SpringApplication.run(JeapCLI.class, args.length == 0 ? new String[]{"help"} : args);
 	}
 }

@@ -3,32 +3,52 @@ package ch.admin.bit.jeap.cli.migration.process;
 import ch.admin.bit.jeap.cli.migration.Migration;
 import ch.admin.bit.jeap.cli.migration.step.Step;
 import ch.admin.bit.jeap.cli.migration.step.maven.PrepareForSpringBoot4ParentUpgrade;
-import ch.admin.bit.jeap.cli.migration.step.maven.RunMaven;
+import ch.admin.bit.jeap.cli.migration.step.maven.RemoveSpringCloudDependencyManagement;
+import ch.admin.bit.jeap.cli.migration.step.maven.RunCodeFormat;
 import ch.admin.bit.jeap.cli.migration.step.maven.RunOpenRewriteRecipe;
 import ch.admin.bit.jeap.cli.migration.step.maven.UpdateJeapDependencies;
 import ch.admin.bit.jeap.cli.migration.step.maven.UpdateJeapParent;
 import ch.admin.bit.jeap.cli.migration.step.springproperties.ReplaceTextInSpringProperties;
 import ch.admin.bit.jeap.cli.process.ProcessExecutor;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 
+@Slf4j
 @Component
 public class SpringBoot4Migration implements Migration {
 
     private final ProcessExecutor processExecutor;
 
-    @Autowired
     public SpringBoot4Migration(ProcessExecutor processExecutor) {
         this.processExecutor = processExecutor;
     }
 
     @Override
     public void migrate(Path root) throws Exception {
-        for (Step step : migrationSteps(root)) {
-            step.execute();
+        List<Step> steps = migrationSteps(root);
+        if (steps.isEmpty()) {
+            return;
+        }
+
+        List<String> failedSteps = new ArrayList<>();
+        // transformation steps
+        for (Step step : steps) {
+            try {
+                step.execute();
+            } catch (Exception e) {
+                failedSteps.add(step.name() + " -> " + e.getMessage());
+                log.warn("Step failed but migration continues: {}", step.name());
+                log.warn("Cause: {}", e.getMessage());
+            }
+        }
+
+        if (!failedSteps.isEmpty()) {
+            throw new RuntimeException("Migration finished with step failures:\n - "
+                    + String.join("\n - ", failedSteps));
         }
     }
 
@@ -47,15 +67,24 @@ public class SpringBoot4Migration implements Migration {
                 new UpdateJeapDependencies(root, processExecutor, true),
 
                 // 3) Run OpenRewrite Spring Boot 4 migration
+                //    The jeap-rewrite-recipes 1.5.2 jar includes MigrateAntPathRequestMatcher
+                //    (Spring Security 7) and ChangeType recipes for ErrorPage,
+                //    ConfigurableServletWebServerFactory, DefaultErrorAttributes package moves.
                 new RunOpenRewriteRecipe(root, processExecutor,
-                        "ch.admin.bit.jeap.openrewrite.recipe:jeap-rewrite-recipes:1.5.0,org.openrewrite.recipe:rewrite-spring:RELEASE",
+                        "ch.admin.bit.jeap.openrewrite.recipe:jeap-rewrite-recipes:1.5.1,org.openrewrite.recipe:rewrite-spring:6.30.4",
                         "ch.admin.bit.jeap.openrewrite.recipe.UpgradeSpringBoot_4_0_NoOtherMigrations"),
 
                 // 4) Override secrets location prefix in spring properties
                 new ReplaceTextInSpringProperties(root, "aws-secretsmanager:", "jeap-aws-secretsmanager:"),
 
-                // 5) Run full Maven install to verify migration after OpenRewrite
-                new RunMaven(root, processExecutor, "install")
+                // 5) Format files modified by the migration using git-code-format-maven-plugin
+                //    (skipped automatically if the project does not use the plugin).
+                //    The plugin limits formatting to git-modified files via git diff.
+                new RunCodeFormat(root, processExecutor),
+
+                // 6) Remove spring-cloud-dependencies from dependencyManagement: managed by the
+                //    jEAP Spring Boot 4 parent BOM, so an explicit import is redundant.
+                new RemoveSpringCloudDependencyManagement(root)
         );
     }
 }

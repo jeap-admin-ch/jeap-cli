@@ -66,7 +66,7 @@ public class ReplaceTextInSpringProperties implements Step {
     }
     private void replaceInFile(Path file) throws IOException {
         String content = Files.readString(file, StandardCharsets.UTF_8);
-        if (content.contains(oldText)) {
+        if (content.contains(oldText) && !content.contains(newText)) {
             Files.writeString(file, content.replace(oldText, newText), StandardCharsets.UTF_8);
             log.info("Replaced '{}' with '{}' in {}", oldText, newText, file);
         }

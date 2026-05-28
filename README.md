@@ -45,7 +45,6 @@ To disable automatic certificate mounting use:
 JEAP_CLI_NO_HOST_CERTS=1 ./jeap <command>
 ```
 
-
 ## Available Commands
 
 | Command                                                | Description                                               |
@@ -92,6 +91,7 @@ Make sure your JAVA_HOME environment variable is set to a GraalVM JDK. For examp
 
 ```bash
 sdk use java 25-graalce
+
 ```
 
 Then run the following command:

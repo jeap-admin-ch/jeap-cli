@@ -49,9 +49,9 @@ class SpringBoot4MigrationTest {
         Migration migration = new SpringBoot4Migration(fakeExecutor);
         migration.migrate(tempDir);
 
-        // Then four Maven commands should have been executed
-        assertEquals(4, fakeExecutor.getExecutionCount(),
-                "Should have executed four Maven commands");
+        // Then three Maven commands should have been executed
+        assertEquals(3, fakeExecutor.getExecutionCount(),
+                "Should have executed three Maven commands");
 
         // First command: update parent
         FakeProcessExecutor.ExecutedCommand firstCommand = fakeExecutor.getExecutedCommands().get(0);
@@ -77,23 +77,15 @@ class SpringBoot4MigrationTest {
 
         // Third command: OpenRewrite Spring Boot 4 migration
         FakeProcessExecutor.ExecutedCommand thirdCommand = fakeExecutor.getExecutedCommands().get(2);
-        assertEquals(List.of("mvn",
-                        "-U",
+                assertEquals(List.of("mvn",
                         MavenPlugin.OPENREWRITE.goal("run"),
-                        "-Drewrite.recipeArtifactCoordinates=ch.admin.bit.jeap.openrewrite.recipe:jeap-rewrite-recipes:1.5.0,org.openrewrite.recipe:rewrite-spring:RELEASE",
+                        "-Drewrite.recipeArtifactCoordinates=ch.admin.bit.jeap.openrewrite.recipe:jeap-rewrite-recipes:1.5.1,org.openrewrite.recipe:rewrite-spring:6.30.4",
                         "-Drewrite.activeRecipes=ch.admin.bit.jeap.openrewrite.recipe.UpgradeSpringBoot_4_0_NoOtherMigrations",
-                        "-Drewrite.exportDatatables=true"),
+                        "-Drewrite.exportDatatables=true",
+                        "-Dmaven.compiler.failOnError=false"),
                 thirdCommand.command(),
                 "Third command should run the OpenRewrite Spring Boot 4 recipe");
         assertEquals(tempDir, thirdCommand.workingDirectory(),
-                "Maven should execute in the project root directory");
-
-        // Fourth command: Maven install after OpenRewrite
-        FakeProcessExecutor.ExecutedCommand fourthCommand = fakeExecutor.getExecutedCommands().get(3);
-        assertEquals(List.of("mvn", "install"),
-                fourthCommand.command(),
-                "Fourth command should run Maven install");
-        assertEquals(tempDir, fourthCommand.workingDirectory(),
                 "Maven should execute in the project root directory");
     }
 

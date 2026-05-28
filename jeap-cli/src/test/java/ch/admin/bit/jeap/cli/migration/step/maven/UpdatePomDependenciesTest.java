@@ -184,6 +184,65 @@ class UpdatePomDependenciesTest {
     }
 
     @Test
+    void removesDependencyBlockEntirely() throws Exception {
+        Path pom = tempDir.resolve("pom.xml");
+        Files.writeString(pom, """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <project>
+                    <dependencies>
+                        <dependency>
+                            <groupId>org.testcontainers</groupId>
+                            <artifactId>testcontainers</artifactId>
+                            <scope>test</scope>
+                        </dependency>
+                        <dependency>
+                            <groupId>org.testcontainers</groupId>
+                            <artifactId>junit-jupiter</artifactId>
+                            <scope>test</scope>
+                        </dependency>
+                    </dependencies>
+                </project>
+                """);
+
+        new UpdatePomDependencies(tempDir, Set::of, List.of(),
+                List.of("org.testcontainers:junit-jupiter")).execute();
+
+        String updated = Files.readString(pom);
+        assertFalse(updated.contains("<artifactId>junit-jupiter</artifactId>"),
+                "junit-jupiter dependency block must be removed");
+        assertTrue(updated.contains("<artifactId>testcontainers</artifactId>"),
+                "Other testcontainers dependency must remain");
+        assertFalse(updated.contains("\n\n\n"),
+                "No triple blank lines after removal");
+    }
+
+    @Test
+    void doesNotRemoveDependencyFromDependencyManagement() throws Exception {
+        Path pom = tempDir.resolve("pom.xml");
+        Files.writeString(pom, """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <project>
+                    <dependencyManagement>
+                        <dependencies>
+                            <dependency>
+                                <groupId>org.testcontainers</groupId>
+                                <artifactId>junit-jupiter</artifactId>
+                                <version>1.21.3</version>
+                            </dependency>
+                        </dependencies>
+                    </dependencyManagement>
+                </project>
+                """);
+
+        new UpdatePomDependencies(tempDir, Set::of, List.of(),
+                List.of("org.testcontainers:junit-jupiter")).execute();
+
+        String updated = Files.readString(pom);
+        assertTrue(updated.contains("<artifactId>junit-jupiter</artifactId>"),
+                "Dependency inside <dependencyManagement> must not be removed");
+    }
+
+    @Test
     void doesNotRenameArtifactInProjectDeclarationOrParentBlock() throws Exception {
         Path pom = tempDir.resolve("pom.xml");
         Files.writeString(pom, """
