@@ -33,6 +33,7 @@ import java.util.stream.Stream;
 class EnsureProjectDependencyManagement implements Step {
 
     private static final String POM_XML_FILE = "pom.xml";
+    private static final String HIBERNATE_JPAMODELGEN_FALLBACK_VERSION = "7.1.1.Final";
 
     private final Path rootDirectory;
     private final List<String> dependenciesToManage;
@@ -90,6 +91,15 @@ class EnsureProjectDependencyManagement implements Step {
 
     private String chooseVersionForCoordinate(String coordinate, List<Path> pomFiles, String rootPomContent) throws IOException {
         String[] parts = splitCoordinate(coordinate);
+
+        // Only manage hibernate-jpamodelgen when it is already used in the project.
+        if ("org.hibernate.orm".equals(parts[0]) && "hibernate-jpamodelgen".equals(parts[1])
+                && !isDependencyPresentInProject(pomFiles, rootPomContent, parts[0], parts[1])) {
+            log.info("Skipping project-managed dependency {}:{} because it is not present in project POMs",
+                    parts[0], parts[1]);
+            return null;
+        }
+
         Optional<String> versionFromMavenCentral = resolveLatestVersionFromMavenCentral(parts[0], parts[1]);
         if (versionFromMavenCentral.isPresent()) {
             return versionFromMavenCentral.get();
@@ -116,7 +126,54 @@ class EnsureProjectDependencyManagement implements Step {
                 }
             }
         }
-        return firstLiteralVersion != null ? firstLiteralVersion : firstPropertyVersion;
+        String chosen = firstLiteralVersion != null ? firstLiteralVersion : firstPropertyVersion;
+        if (chosen != null) {
+            return chosen;
+        }
+
+        // Fallback for Hibernate metamodel generator when explicit version is missing:
+        // align it with hibernate-core if that version is present in the project.
+        if ("org.hibernate.orm".equals(parts[0]) && "hibernate-jpamodelgen".equals(parts[1])) {
+            Optional<String> hibernateCoreVersion = findVersionInProject(pomFiles, rootPomContent, "org.hibernate.orm", "hibernate-core");
+            if (hibernateCoreVersion.isPresent()) {
+                log.info("Using fallback version {} for {}:{} from org.hibernate.orm:hibernate-core",
+                        hibernateCoreVersion.get(), parts[0], parts[1]);
+                return hibernateCoreVersion.get();
+            }
+            log.warn("Using hard fallback version {} for {}:{} because no project/Maven-resolved version was found",
+                    HIBERNATE_JPAMODELGEN_FALLBACK_VERSION, parts[0], parts[1]);
+            return HIBERNATE_JPAMODELGEN_FALLBACK_VERSION;
+        }
+
+        return null;
+    }
+
+    private boolean isDependencyPresentInProject(List<Path> pomFiles, String rootPomContent, String groupId, String artifactId) throws IOException {
+        if (containsGroupAndArtifact(rootPomContent, groupId, artifactId)) {
+            return true;
+        }
+        for (Path pomPath : pomFiles) {
+            String pomContent = Files.readString(pomPath, StandardCharsets.UTF_8);
+            if (containsGroupAndArtifact(pomContent, groupId, artifactId)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private Optional<String> findVersionInProject(List<Path> pomFiles, String rootPomContent, String groupId, String artifactId) throws IOException {
+        Optional<String> rootVersion = findVersionInPom(rootPomContent, groupId, artifactId);
+        if (rootVersion.isPresent()) {
+            return rootVersion;
+        }
+        for (Path pomPath : pomFiles) {
+            String pomContent = Files.readString(pomPath, StandardCharsets.UTF_8);
+            Optional<String> version = findVersionInPom(pomContent, groupId, artifactId);
+            if (version.isPresent()) {
+                return version;
+            }
+        }
+        return Optional.empty();
     }
 
     private Optional<String> resolveLatestVersionFromMavenCentral(String groupId, String artifactId) {
@@ -187,7 +244,7 @@ class EnsureProjectDependencyManagement implements Step {
     }
 
     private boolean isManagedInDependencyManagement(String pomContent, String coordinate) {
-        Matcher matcher = Pattern.compile("(<dependencyManagement>\\s*<dependencies>)(.*?)(</dependencies>\\s*</dependencyManagement>)", Pattern.DOTALL)
+        Matcher matcher = Pattern.compile("(<dependencyManagement>[\\s\\S]*?<dependencies>)(.*?)(</dependencies>[\\s\\S]*?</dependencyManagement>)", Pattern.DOTALL)
                 .matcher(pomContent);
         if (!matcher.find()) {
             return false;
@@ -210,7 +267,7 @@ class EnsureProjectDependencyManagement implements Step {
 
     private String insertIntoDependencyManagement(String pomContent, String dependencyEntries) {
         Matcher existingDependencyManagement = Pattern.compile(
-                "(<dependencyManagement>\\s*<dependencies>)(.*?)(</dependencies>\\s*</dependencyManagement>)",
+                "(<dependencyManagement>[\\s\\S]*?<dependencies>)(.*?)(</dependencies>[\\s\\S]*?</dependencyManagement>)",
                 Pattern.DOTALL
         ).matcher(pomContent);
         if (existingDependencyManagement.find()) {
@@ -235,9 +292,19 @@ class EnsureProjectDependencyManagement implements Step {
 
     private int findBestDependencyManagementInsertPosition(String pomContent) {
         int dependenciesIndex = pomContent.indexOf("<dependencies>");
-        if (dependenciesIndex >= 0) {
+        int dependencyManagementIndex = pomContent.indexOf("<dependencyManagement>");
+
+        if (dependenciesIndex >= 0 && (dependencyManagementIndex < 0 || dependenciesIndex < dependencyManagementIndex)) {
+            // Root-level <dependencies> comes before any <dependencyManagement> — safe insert position
             return dependenciesIndex;
         }
+
+        // <dependencies> is inside an existing <dependencyManagement>, insert after its closing tag
+        int lastEndDM = pomContent.lastIndexOf("</dependencyManagement>");
+        if (lastEndDM >= 0) {
+            return lastEndDM + "</dependencyManagement>".length();
+        }
+
         int buildIndex = pomContent.indexOf("<build>");
         if (buildIndex >= 0) {
             return buildIndex;

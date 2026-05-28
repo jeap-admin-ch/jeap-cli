@@ -10,7 +10,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 
 Added new Spring Boot 4 preparation step (`PrepareForSpringBoot4ParentUpgrade`) executed before parent/dependency updates
-- Set jEAP parent to `34.6.0-alpha-springboot4` at the start of preparation so Spring Boot 4 managed dependencies can be resolved
+- Set jEAP parent to `35.0.0` at the start of preparation so Spring Boot 4 managed dependencies can be resolved
 - Added automatic project-level `dependencyManagement` entries for dependencies no longer managed by Spring Boot/jEAP parent
 - Added optional resolution of latest stable dependency versions from Maven Central (with fallback to existing project versions)
 - Added TODO comments to generated `dependencyManagement` entries to prompt manual verification of explicit management and selected version

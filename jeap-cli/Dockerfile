@@ -9,11 +9,15 @@ ARG NO_PROXY
 
 # Install Maven
 ARG MAVEN_VERSION=3.9.12
+ARG NODE_VERSION=22
+ARG NVM_VERSION=0.40.4
 ARG MAVEN_SHA=0a1be79f02466533fc1a80abbef8796e4f737c46c6574ede5658b110899942a94db634477dfd3745501c80aef9aac0d4f841d38574373f7e2d24cce89d694f70
 ARG MAVEN_URL=https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/${MAVEN_VERSION}/apache-maven-${MAVEN_VERSION}-bin.tar.gz
 
 # Note: curl/wget are used by the maven wrapper to download maven at runtime. They are thus part of the distributed image.
 # The fallback download mechanism using Java in maven wrapper does not work well with proxies.
+
+ENV NVM_DIR=/opt/nvm
 
 RUN --mount=type=secret,id=cacert,target=/etc/host-ca-bundle.crt \
     if [ -f /etc/host-ca-bundle.crt ]; then \
@@ -27,6 +31,7 @@ RUN --mount=type=secret,id=cacert,target=/etc/host-ca-bundle.crt \
         echo "Acquire::https::Proxy \"$HTTPS_PROXY\";" >> /etc/apt/apt.conf.d/proxy.conf; \
     fi && \
     apt-get update && apt-get install -y --no-install-recommends curl wget unzip git gh && \
+    HTTP_PROXY=$HTTP_PROXY HTTPS_PROXY=$HTTPS_PROXY NO_PROXY=$NO_PROXY \
     curl -fsSL -o /tmp/apache-maven.tar.gz ${MAVEN_URL} && \
     echo "${MAVEN_SHA}  /tmp/apache-maven.tar.gz" | sha512sum -c - && \
     tar -xzf /tmp/apache-maven.tar.gz -C /opt && \
@@ -34,7 +39,15 @@ RUN --mount=type=secret,id=cacert,target=/etc/host-ca-bundle.crt \
     rm -rf /tmp/* && \
     apt-get autoremove -y && \
     apt-get clean && \
-    rm -rf /var/lib/apt/lists/* /etc/apt/apt.conf.d/proxy.conf
+    rm -rf /var/lib/apt/lists/* /etc/apt/apt.conf.d/proxy.conf && \
+    mkdir -p ${NVM_DIR} && \
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v${NVM_VERSION}/install.sh | bash && \
+    . ${NVM_DIR}/nvm.sh && \
+    nvm install ${NODE_VERSION} && \
+    nvm alias default ${NODE_VERSION} && \
+    ln -sf "$(nvm which default)" /usr/local/bin/node && \
+    ln -sf "$(dirname $(nvm which default))/npm" /usr/local/bin/npm && \
+    ln -sf "$(dirname $(nvm which default))/npx" /usr/local/bin/npx
 
 ENV MAVEN_HOME=/opt/maven
 ENV PATH="${MAVEN_HOME}/bin:${PATH}"
@@ -48,6 +61,7 @@ ENV HOME=/home/jeapcli
 ENV MAVEN_USER_HOME=/home/jeapcli/.m2
 ENV MAVEN_OPTS="-Duser.home=/home/jeapcli"
 ENV JAVA_TOOL_OPTIONS="--enable-native-access=ALL-UNNAMED --sun-misc-unsafe-memory-access=allow --add-opens=java.base/sun.misc=ALL-UNNAMED"
+# CERTIFICATES_REPO_GIT_TOKEN is passed at runtime by the jeap wrapper script (via gh auth token)
 
 COPY target/jeap-cli /app/jeap-cli
 

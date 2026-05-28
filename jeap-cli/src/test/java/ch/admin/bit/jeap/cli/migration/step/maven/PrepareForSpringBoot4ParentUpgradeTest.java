@@ -74,6 +74,11 @@ class PrepareForSpringBoot4ParentUpgradeTest {
                             <version>2.18.0</version>
                         </dependency>
                         <dependency>
+                            <groupId>org.hibernate.orm</groupId>
+                            <artifactId>hibernate-jpamodelgen</artifactId>
+                            <version>7.1.1.Final</version>
+                        </dependency>
+                        <dependency>
                             <groupId>com.github.tomakehurst</groupId>
                             <artifactId>wiremock-jre8-standalone</artifactId>
                             <scope>test</scope>
@@ -86,7 +91,10 @@ class PrepareForSpringBoot4ParentUpgradeTest {
                 </project>
                 """);
 
-        createStep(Map.of("commons-io:commons-io", "2.99.0")).execute();
+        createStep(Map.of(
+                "commons-io:commons-io", "2.99.0",
+                "org.hibernate.orm:hibernate-jpamodelgen", "7.1.1.Final"
+        )).execute();
 
         String updatedRootPom = Files.readString(rootPom);
         String updatedModulePom = Files.readString(modulePom);
@@ -95,6 +103,9 @@ class PrepareForSpringBoot4ParentUpgradeTest {
         assertTrue(updatedRootPom.contains("<groupId>commons-io</groupId>"));
         assertTrue(updatedRootPom.contains("<artifactId>commons-io</artifactId>"));
         assertTrue(updatedRootPom.contains("<version>2.99.0</version>"));
+        assertTrue(updatedRootPom.contains("<groupId>org.hibernate.orm</groupId>"));
+        assertTrue(updatedRootPom.contains("<artifactId>hibernate-jpamodelgen</artifactId>"));
+        assertTrue(updatedRootPom.contains("<version>7.1.1.Final</version>"));
         assertTrue(updatedRootPom.contains("TODO(jeap-cli): Verify whether this dependency still needs explicit project-level management"));
 
         assertFalse(updatedModulePom.contains("<artifactId>commons-io</artifactId>\n            <version>2.18.0</version>"));
@@ -156,6 +167,91 @@ class PrepareForSpringBoot4ParentUpgradeTest {
         assertFalse(updatedModulePom.contains("<version>2.18.0</version>"));
     }
 
+    @Test
+    void renamesTestcontainersPostgresqlAndRemovesJunitJupiter() throws Exception {
+        Path rootPom = tempDir.resolve("pom.xml");
+        Path moduleDir = tempDir.resolve("module-tc");
+        Files.createDirectories(moduleDir);
+        Path modulePom = moduleDir.resolve("pom.xml");
+
+        Files.writeString(rootPom, """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <project xmlns="http://maven.apache.org/POM/4.0.0">
+                    <modelVersion>4.0.0</modelVersion>
+                    <groupId>ch.admin.bit.jeap</groupId>
+                    <artifactId>root</artifactId>
+                    <version>1.0.0</version>
+                    <packaging>pom</packaging>
+                    <modules>
+                        <module>module-tc</module>
+                    </modules>
+                </project>
+                """);
+
+        Files.writeString(modulePom, """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <project xmlns="http://maven.apache.org/POM/4.0.0">
+                    <modelVersion>4.0.0</modelVersion>
+                    <parent>
+                        <groupId>ch.admin.bit.jeap</groupId>
+                        <artifactId>root</artifactId>
+                        <version>1.0.0</version>
+                    </parent>
+                    <artifactId>module-tc</artifactId>
+                    <dependencies>
+                        <dependency>
+                            <groupId>org.testcontainers</groupId>
+                            <artifactId>testcontainers</artifactId>
+                            <scope>test</scope>
+                        </dependency>
+                        <dependency>
+                            <groupId>org.testcontainers</groupId>
+                            <artifactId>postgresql</artifactId>
+                            <scope>test</scope>
+                        </dependency>
+                        <dependency>
+                            <groupId>org.testcontainers</groupId>
+                            <artifactId>kafka</artifactId>
+                            <scope>test</scope>
+                        </dependency>
+                        <dependency>
+                            <groupId>org.testcontainers</groupId>
+                            <artifactId>junit-jupiter</artifactId>
+                            <scope>test</scope>
+                        </dependency>
+                        <dependency>
+                            <groupId>org.postgresql</groupId>
+                            <artifactId>postgresql</artifactId>
+                            <version>42.7.3</version>
+                        </dependency>
+                    </dependencies>
+                </project>
+                """);
+
+        createStep(Map.of()).execute();
+
+        String updatedModulePom = Files.readString(modulePom);
+
+        assertTrue(updatedModulePom.contains("<artifactId>testcontainers-postgresql</artifactId>"),
+                "org.testcontainers:postgresql must be renamed to testcontainers-postgresql");
+        assertTrue(updatedModulePom.contains("<artifactId>testcontainers-kafka</artifactId>"),
+                "org.testcontainers:kafka must be renamed to testcontainers-kafka");
+        assertTrue(updatedModulePom.contains("<groupId>org.testcontainers</groupId>"),
+                "org.testcontainers groupId must be present");
+        assertFalse(updatedModulePom.contains("<groupId>org.testcontainers</groupId>\n                            <artifactId>postgresql</artifactId>"),
+                "Old org.testcontainers:postgresql must be gone");
+        assertFalse(updatedModulePom.contains("<artifactId>junit-jupiter</artifactId>"),
+                "junit-jupiter must be removed (merged into core testcontainers in TC 2.x)");
+        assertTrue(updatedModulePom.contains("<artifactId>testcontainers</artifactId>"),
+                "Core testcontainers dependency must remain");
+        // JDBC driver must NOT be renamed — it shares the artifactId "postgresql" but has a different groupId
+        assertTrue(updatedModulePom.contains("<groupId>org.postgresql</groupId>"),
+                "org.postgresql groupId must remain");
+        assertTrue(updatedModulePom.contains("<artifactId>postgresql</artifactId>"),
+                "org.postgresql:postgresql (JDBC driver) artifactId must not be renamed");
+    }
+
+
     private int countCommonsIoArtifactIds(String text) {
         Matcher matcher = Pattern.compile(Pattern.quote("<artifactId>commons-io</artifactId>")).matcher(text);
         int count = 0;
@@ -174,5 +270,3 @@ class PrepareForSpringBoot4ParentUpgradeTest {
         return () -> executed.add(name);
     }
 }
-
-
