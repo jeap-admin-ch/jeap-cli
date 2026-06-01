@@ -142,7 +142,29 @@ class ReplaceTextInSpringPropertiesTest {
         ReplaceTextInSpringProperties step = new ReplaceTextInSpringProperties(tempDir, OLD_TEXT, NEW_TEXT);
         assertEquals("Replace Text In Spring Properties", step.name());
     }
-}
 
+    @Test
+    void testIdempotentAndCollapsesDuplicatedJeapPrefix() throws Exception {
+        String content = """
+                spring:
+                  config:
+                    import:
+                      - aws-secretsmanager:first
+                      - jeap-jeap-jeap-aws-secretsmanager:second
+                """;
+        Path file = tempDir.resolve("application.yml");
+        Files.writeString(file, content);
+
+        ReplaceTextInSpringProperties step = new ReplaceTextInSpringProperties(tempDir, OLD_TEXT, NEW_TEXT);
+        step.execute();
+        step.execute();
+
+        String updated = Files.readString(file);
+        assertTrue(updated.contains("jeap-aws-secretsmanager:first"));
+        assertTrue(updated.contains("jeap-aws-secretsmanager:second"));
+        assertFalse(updated.contains("jeap-jeap-aws-secretsmanager:"));
+        assertFalse(updated.contains("jeap-jeap-jeap-aws-secretsmanager:"));
+    }
+}
 
 
