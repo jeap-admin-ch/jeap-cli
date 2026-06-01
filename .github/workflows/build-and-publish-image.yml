@@ -29,7 +29,14 @@ jobs:
           java-version: '25'
           distribution: 'graalvm'
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          cache: maven
+
+      - name: Cache Maven local repository
+        uses: actions/cache@v5
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
 
       - name: Read Project Version
         id: pomversion
@@ -62,6 +69,9 @@ jobs:
       - name: Show Java Versions
         run: |
           java -version
+
+      - name: Pre-resolve Maven dependencies for Trivy
+        run: ./mvnw -B -ntp dependency:resolve dependency:resolve-plugins
 
       - name: Run Trivy Security Scan
         uses: aquasecurity/trivy-action@master

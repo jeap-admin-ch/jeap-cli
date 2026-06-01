@@ -63,11 +63,11 @@ public class SpringBoot4Migration implements Migration {
                 new UpdateJeapDependencies(root, processExecutor, true),
 
                 // 2) Run OpenRewrite Spring Boot 4 migration
-                //    The jeap-rewrite-recipes 1.5.2 jar includes MigrateAntPathRequestMatcher
+                //    The jeap-rewrite-recipes 1.5.3 jar includes MigrateAntPathRequestMatcher
                 //    (Spring Security 7) and ChangeType recipes for ErrorPage,
                 //    ConfigurableServletWebServerFactory, DefaultErrorAttributes package moves.
                 new RunOpenRewriteRecipe(root, processExecutor,
-                        "ch.admin.bit.jeap.openrewrite.recipe:jeap-rewrite-recipes:1.5.2,org.openrewrite.recipe:rewrite-spring:6.30.4",
+                        "ch.admin.bit.jeap.openrewrite.recipe:jeap-rewrite-recipes:1.5.3,org.openrewrite.recipe:rewrite-spring:6.30.4",
                         "ch.admin.bit.jeap.openrewrite.recipe.UpgradeSpringBoot_4_0_NoOtherMigrations"),
 
                 // 3) Override secrets location prefix in spring properties
