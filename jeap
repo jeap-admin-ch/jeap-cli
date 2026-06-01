@@ -158,23 +158,23 @@ refresh_codeartifact_npm_token() {
 
   # Check if .npmrc references AWS CodeArtifact
   local registry_url
-  registry_url=$(grep -oP '(?<=registry=)https://[^\s]+\.d\.codeartifact\.[^\s]+\.amazonaws\.com/npm/[^\s]+/' "$npmrc" 2>/dev/null | head -1)
+  registry_url=$(grep -oP '(?<=registry=)https://[^\s]+\.d\.codeartifact\.[^\s]+\.amazonaws\.com/npm/[^\s]+/' "$npmrc" 2>/dev/null | head -1 || true)
   [[ -n "$registry_url" ]] || return 0
 
   # Parse: https://<domain>-<owner>.d.codeartifact.<region>.amazonaws.com/npm/<repo>/
   local host repo domain_dash_owner region domain owner
   host=$(echo "$registry_url" | sed 's|https://||;s|/.*||')
-  repo=$(echo "$registry_url" | grep -oP '/npm/\K[^/]+')
+  repo=$(echo "$registry_url" | grep -oP '/npm/\K[^/]+' || true)
   domain_dash_owner=$(echo "$host" | cut -d. -f1)
-  region=$(echo "$host" | grep -oP '\.d\.codeartifact\.\K[^.]+(?=\.amazonaws\.com)')
-  owner=$(echo "$domain_dash_owner" | grep -oP '\d+$')
+  region=$(echo "$host" | grep -oP '\.d\.codeartifact\.\K[^.]+(?=\.amazonaws\.com)' || true)
+  owner=$(echo "$domain_dash_owner" | grep -oP '\d+$' || true)
   domain=$(echo "$domain_dash_owner" | sed "s/-${owner}$//")
 
   [[ -n "$domain" && -n "$owner" && -n "$region" && -n "$repo" ]] || return 0
 
   # Find the auth token in .npmrc
   local token
-  token=$(grep -oP "(?<=//${host}/npm/${repo}/:_authToken=)\S+" "$npmrc" 2>/dev/null | head -1)
+  token=$(grep -oP "(?<=//${host}/npm/${repo}/:_authToken=)\S+" "$npmrc" 2>/dev/null | head -1 || true)
   [[ -n "$token" ]] || return 0
 
   # Decode the JWE/JWT header (first base64url segment) to get "exp"
@@ -189,7 +189,7 @@ try:
     print(d.get('exp', 0))
 except Exception:
     print(0)
-" 2>/dev/null)
+" 2>/dev/null || echo 0)
   now=$(date +%s)
 
   if [[ -n "$exp" && "$exp" -gt 0 && "$exp" -le "$now" ]]; then
@@ -327,7 +327,7 @@ DOCKER_ENV_OPTS+=("-e" "JEAP_MAVEN_REPO_LOCAL=${MAVEN_REPO_LOCAL_IN_CONTAINER}")
 
 # Pass MAVEN_OPTS unchanged from user env and also as canonical JEAP_MAVEN_OPTS.
 if [[ -n "${MAVEN_OPTS:-}" && -n "${MAVEN_OPTS//[[:space:]]/}" ]]; then
-  NORMALIZED_MAVEN_OPTS=$(HOST_HOME="${HOME}" RAW_MAVEN_OPTS="${MAVEN_OPTS}" python3 - <<'PY'
+  NORMALIZED_MAVEN_OPTS=$(HOST_HOME="${HOME}" RAW_MAVEN_OPTS="${MAVEN_OPTS}" python3 - <<'PY' 2>/dev/null || echo "${MAVEN_OPTS}"
 import os
 raw = os.environ.get("RAW_MAVEN_OPTS", "")
 host_home = os.environ.get("HOST_HOME", "")
@@ -403,7 +403,7 @@ if [[ -n "${JEAP_CLI_VERBOSE:-}" ]]; then
     -w /workspace \
     --entrypoint sh \
     "$IMAGE" \
-    -lc 'echo "[INFO] id=$(id -u):$(id -g)"; echo "[INFO] HOME=${HOME:-<unset>}"; echo "[INFO] MAVEN_USER_HOME=${MAVEN_USER_HOME:-<unset>}"; echo "[INFO] pwd=$(pwd)"; echo "[INFO] Container MAVEN_CONFIG=${MAVEN_CONFIG:-<unset>}"; echo "[INFO] Container MAVEN_OPTS=${MAVEN_OPTS:-<unset>}"; echo "[INFO] --- /home/jeapcli/.m2/settings.xml ---"; if [ -f /home/jeapcli/.m2/settings.xml ]; then cat /home/jeapcli/.m2/settings.xml; else echo "settings.xml not found"; fi; echo "[INFO] --- /home/jeapcli/.m2/repository ---"; ls -lad /home/jeapcli/.m2/repository 2>/dev/null || echo "repository dir not found"; echo "[INFO] --- local recipe presence ---"; ls -la /home/jeapcli/.m2/repository/ch/admin/bit/jeap/openrewrite/recipe/jeap-rewrite-recipes/1.5.2 2>/dev/null || echo "1.5.2 not present in container local repo"; echo "[INFO] --- end debug ---"' >&2
+    -lc 'echo "[INFO] id=$(id -u):$(id -g)"; echo "[INFO] HOME=${HOME:-<unset>}"; echo "[INFO] MAVEN_USER_HOME=${MAVEN_USER_HOME:-<unset>}"; echo "[INFO] pwd=$(pwd)"; echo "[INFO] Container MAVEN_CONFIG=${MAVEN_CONFIG:-<unset>}"; echo "[INFO] Container MAVEN_OPTS=${MAVEN_OPTS:-<unset>}"; echo "[INFO] --- /home/jeapcli/.m2/settings.xml ---"; if [ -f /home/jeapcli/.m2/settings.xml ]; then cat /home/jeapcli/.m2/settings.xml; else echo "settings.xml not found"; fi; echo "[INFO] --- /home/jeapcli/.m2/repository ---"; ls -lad /home/jeapcli/.m2/repository 2>/dev/null || echo "repository dir not found"; echo "[INFO] --- local recipe presence ---"; ls -la /home/jeapcli/.m2/repository/ch/admin/bit/jeap/openrewrite/recipe/jeap-rewrite-recipes/1.5.3 2>/dev/null || echo "1.5.3 not present in container local repo"; echo "[INFO] --- end debug ---"' >&2
 
   echo "=== Docker Command ===" >&2
   printf '%q ' "${DOCKER_CMD[@]}" >&2

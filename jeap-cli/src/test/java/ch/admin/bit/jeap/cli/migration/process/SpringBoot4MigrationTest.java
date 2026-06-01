@@ -68,7 +68,7 @@ class SpringBoot4MigrationTest {
         FakeProcessExecutor.ExecutedCommand secondCommand = fakeExecutor.getExecutedCommands().get(1);
                 assertEquals(List.of("mvn",
                         MavenPlugin.OPENREWRITE.goal("run"),
-                        "-Drewrite.recipeArtifactCoordinates=ch.admin.bit.jeap.openrewrite.recipe:jeap-rewrite-recipes:1.5.2,org.openrewrite.recipe:rewrite-spring:6.30.4",
+                        "-Drewrite.recipeArtifactCoordinates=ch.admin.bit.jeap.openrewrite.recipe:jeap-rewrite-recipes:1.5.3,org.openrewrite.recipe:rewrite-spring:6.30.4",
                         "-Drewrite.activeRecipes=ch.admin.bit.jeap.openrewrite.recipe.UpgradeSpringBoot_4_0_NoOtherMigrations",
                         "-Drewrite.exportDatatables=true",
                         "-Dmaven.compiler.failOnError=false"),
