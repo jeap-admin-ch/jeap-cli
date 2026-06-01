@@ -7,7 +7,6 @@ import ch.admin.bit.jeap.cli.migration.step.maven.RemoveSpringCloudDependencyMan
 import ch.admin.bit.jeap.cli.migration.step.maven.RunCodeFormat;
 import ch.admin.bit.jeap.cli.migration.step.maven.RunOpenRewriteRecipe;
 import ch.admin.bit.jeap.cli.migration.step.maven.UpdateJeapDependencies;
-import ch.admin.bit.jeap.cli.migration.step.maven.UpdateJeapParent;
 import ch.admin.bit.jeap.cli.migration.step.springproperties.ReplaceTextInSpringProperties;
 import ch.admin.bit.jeap.cli.process.ProcessExecutor;
 import lombok.extern.slf4j.Slf4j;
@@ -54,35 +53,32 @@ public class SpringBoot4Migration implements Migration {
 
     private List<Step> migrationSteps(Path root) {
         return List.of(
-                // 0) Prepare pom.xml files: pins the jEAP parent to the Spring Boot 4 alpha version,
+                // 0) Prepare pom.xml files: pins the jEAP parent to the Spring Boot 4 target version,
                 //    replaces/removes dependencies that changed their managed state, and renames artifacts
-                //    that were renamed in Spring Boot 4, so that the parent upgrade in step 1 can resolve
+                //    that were renamed in Spring Boot 4, so that the dependency update in step 1 can resolve
                 //    all dependencies without conflicts.
                 new PrepareForSpringBoot4ParentUpgrade(root),
 
-                // 1) Update jEAP parent to latest version (including qualified versions like -alpha)
-                new UpdateJeapParent(root, processExecutor, true),
-
-                // 2) Update jEAP dependency versions (only locally managed, not parent-managed; including qualified versions)
+                // 1) Update jEAP dependency versions (only locally managed, not parent-managed; including qualified versions)
                 new UpdateJeapDependencies(root, processExecutor, true),
 
-                // 3) Run OpenRewrite Spring Boot 4 migration
+                // 2) Run OpenRewrite Spring Boot 4 migration
                 //    The jeap-rewrite-recipes 1.5.2 jar includes MigrateAntPathRequestMatcher
                 //    (Spring Security 7) and ChangeType recipes for ErrorPage,
                 //    ConfigurableServletWebServerFactory, DefaultErrorAttributes package moves.
                 new RunOpenRewriteRecipe(root, processExecutor,
-                        "ch.admin.bit.jeap.openrewrite.recipe:jeap-rewrite-recipes:1.5.1,org.openrewrite.recipe:rewrite-spring:6.30.4",
+                        "ch.admin.bit.jeap.openrewrite.recipe:jeap-rewrite-recipes:1.5.2,org.openrewrite.recipe:rewrite-spring:6.30.4",
                         "ch.admin.bit.jeap.openrewrite.recipe.UpgradeSpringBoot_4_0_NoOtherMigrations"),
 
-                // 4) Override secrets location prefix in spring properties
+                // 3) Override secrets location prefix in spring properties
                 new ReplaceTextInSpringProperties(root, "aws-secretsmanager:", "jeap-aws-secretsmanager:"),
 
-                // 5) Format files modified by the migration using git-code-format-maven-plugin
+                // 4) Format files modified by the migration using git-code-format-maven-plugin
                 //    (skipped automatically if the project does not use the plugin).
                 //    The plugin limits formatting to git-modified files via git diff.
                 new RunCodeFormat(root, processExecutor),
 
-                // 6) Remove spring-cloud-dependencies from dependencyManagement: managed by the
+                // 5) Remove spring-cloud-dependencies from dependencyManagement: managed by the
                 //    jEAP Spring Boot 4 parent BOM, so an explicit import is redundant.
                 new RemoveSpringCloudDependencyManagement(root)
         );

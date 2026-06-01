@@ -11,6 +11,8 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 /**
  * Replaces a given text with a new text in all Spring property files whose names match a given regex pattern.
  * Files are searched recursively starting from the root directory.
@@ -66,10 +68,37 @@ public class ReplaceTextInSpringProperties implements Step {
     }
     private void replaceInFile(Path file) throws IOException {
         String content = Files.readString(file, StandardCharsets.UTF_8);
-        if (content.contains(oldText) && !content.contains(newText)) {
-            Files.writeString(file, content.replace(oldText, newText), StandardCharsets.UTF_8);
+        String updated = replaceIdempotently(content);
+        if (!content.equals(updated)) {
+            Files.writeString(file, updated, StandardCharsets.UTF_8);
             log.info("Replaced '{}' with '{}' in {}", oldText, newText, file);
         }
+    }
+
+    private String replaceIdempotently(String content) {
+        if (!newText.endsWith(oldText)) {
+            return content.replace(oldText, newText);
+        }
+
+        String prefix = newText.substring(0, newText.length() - oldText.length());
+        if (prefix.isEmpty()) {
+            return content.replace(oldText, newText);
+        }
+
+        String quotedPrefix = Pattern.quote(prefix);
+        String quotedOld = Pattern.quote(oldText);
+
+        // Normalize already duplicated prefixes, e.g. jeap-jeap-aws-secretsmanager: -> jeap-aws-secretsmanager:
+        String normalized = content.replaceAll(
+                "(?:" + quotedPrefix + "){2,}" + quotedOld,
+                Matcher.quoteReplacement(newText)
+        );
+
+        // Replace only non-prefixed occurrences, keeping the operation idempotent on reruns.
+        return normalized.replaceAll(
+                "(?<!" + quotedPrefix + ")" + quotedOld,
+                Matcher.quoteReplacement(newText)
+        );
     }
     @Override
     public String name() {
