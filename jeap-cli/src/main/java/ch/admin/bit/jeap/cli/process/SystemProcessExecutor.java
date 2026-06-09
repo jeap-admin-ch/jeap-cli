@@ -6,8 +6,10 @@ import org.springframework.stereotype.Component;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.nio.file.Path;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -28,6 +30,7 @@ public class SystemProcessExecutor implements ProcessExecutor {
     private static final String JEAP_MAVEN_OPTS = "JEAP_MAVEN_OPTS";
     private static final String JEAP_MAVEN_SETTINGS = "JEAP_MAVEN_SETTINGS";
     private static final String JEAP_MAVEN_REPO_LOCAL = "JEAP_MAVEN_REPO_LOCAL";
+    private static final String MAVEN_OPTS = "MAVEN_OPTS";
 
     @Override
     public int execute(List<String> command, Path workingDirectory) throws IOException, InterruptedException {
@@ -105,11 +108,117 @@ public class SystemProcessExecutor implements ProcessExecutor {
         return adjusted;
     }
 
-    private void ensureMavenEnvironment(Map<String, String> environment) {
+    void ensureMavenEnvironment(Map<String, String> environment) {
         String canonicalMavenOpts = environment.get(JEAP_MAVEN_OPTS);
         if (hasText(canonicalMavenOpts)) {
-            environment.put("MAVEN_OPTS", canonicalMavenOpts);
+            environment.put(MAVEN_OPTS, canonicalMavenOpts);
+            return;
         }
+        if (hasText(environment.get(MAVEN_OPTS))) {
+            return;
+        }
+        String proxyMavenOpts = buildMavenOptsFromProxyEnvironment(environment);
+        if (hasText(proxyMavenOpts)) {
+            environment.put(MAVEN_OPTS, proxyMavenOpts);
+            logInfo("Fallback for http proxy in mavenopts: " + proxyMavenOpts);
+        }
+    }
+
+    private String buildMavenOptsFromProxyEnvironment(Map<String, String> environment) {
+        List<String> opts = new ArrayList<>();
+        addProxyOptions(opts, "http", firstEnvironmentValue(environment, "http_proxy", "HTTP_PROXY"), 80);
+        addProxyOptions(opts, "https", firstEnvironmentValue(environment, "https_proxy", "HTTPS_PROXY"), 443);
+
+        String noProxy = firstEnvironmentValue(environment, "no_proxy", "NO_PROXY");
+        if (!opts.isEmpty() && hasText(noProxy)) {
+            String nonProxyHosts = toMavenNonProxyHosts(noProxy);
+            if (hasText(nonProxyHosts)) {
+                opts.add("-Dhttp.nonProxyHosts=" + nonProxyHosts);
+                opts.add("-Dhttps.nonProxyHosts=" + nonProxyHosts);
+            }
+        }
+        return String.join(" ", opts);
+    }
+
+    private void addProxyOptions(List<String> opts, String protocol, String proxyUrl, int defaultPort) {
+        ProxyConfiguration proxyConfiguration = parseProxyConfiguration(protocol, proxyUrl, defaultPort);
+        if (proxyConfiguration == null) {
+            return;
+        }
+        opts.add("-D" + protocol + ".proxyHost=" + proxyConfiguration.host());
+        opts.add("-D" + protocol + ".proxyPort=" + proxyConfiguration.port());
+    }
+
+    private ProxyConfiguration parseProxyConfiguration(String protocol, String proxyUrl, int defaultPort) {
+        if (!hasText(proxyUrl)) {
+            return null;
+        }
+        String value = proxyUrl.trim();
+        String valueWithScheme = value.contains("://") ? value : protocol + "://" + value;
+        try {
+            URI uri = new URI(valueWithScheme);
+            String host = uri.getHost();
+            if (!hasText(host)) {
+                logWarn("Could not parse " + protocol + "_proxy for Maven proxy fallback: missing host");
+                return null;
+            }
+            int port = uri.getPort() == -1 ? defaultPort : uri.getPort();
+            return new ProxyConfiguration(host, port);
+        } catch (URISyntaxException e) {
+            logWarn("Could not parse " + protocol + "_proxy for Maven proxy fallback: " + e.getReason());
+            return null;
+        }
+    }
+
+    private String firstEnvironmentValue(Map<String, String> environment, String... keys) {
+        for (String key : keys) {
+            String value = environment.get(key);
+            if (hasText(value)) {
+                return value;
+            }
+        }
+        return null;
+    }
+
+    private String toMavenNonProxyHosts(String noProxy) {
+        List<String> nonProxyHosts = new ArrayList<>();
+        for (String entry : noProxy.split(",")) {
+            String normalized = normalizeNoProxyEntry(entry);
+            if (hasText(normalized)) {
+                nonProxyHosts.add(normalized);
+            }
+        }
+        return String.join("|", nonProxyHosts);
+    }
+
+    private String normalizeNoProxyEntry(String entry) {
+        if (!hasText(entry)) {
+            return null;
+        }
+        String normalized = entry.trim();
+        int schemeSeparator = normalized.indexOf("://");
+        if (schemeSeparator >= 0) {
+            normalized = normalized.substring(schemeSeparator + 3);
+        }
+        int pathSeparator = normalized.indexOf('/');
+        if (pathSeparator >= 0) {
+            normalized = normalized.substring(0, pathSeparator);
+        }
+        if (normalized.startsWith("[")) {
+            int closingBracket = normalized.indexOf(']');
+            if (closingBracket >= 0) {
+                normalized = normalized.substring(0, closingBracket + 1);
+            }
+        } else {
+            int colon = normalized.lastIndexOf(':');
+            if (colon >= 0 && normalized.indexOf(':') == colon) {
+                normalized = normalized.substring(0, colon);
+            }
+        }
+        if (normalized.startsWith(".")) {
+            normalized = "*" + normalized;
+        }
+        return normalized;
     }
 
     private boolean isMavenCommand(String executable) {
@@ -165,7 +274,7 @@ public class SystemProcessExecutor implements ProcessExecutor {
         if (hasText(fromCommand)) {
             return fromCommand;
         }
-        String fromMavenOpts = findRepoLocalInString(environment.get("MAVEN_OPTS"));
+        String fromMavenOpts = findRepoLocalInString(environment.get(MAVEN_OPTS));
         if (hasText(fromMavenOpts)) {
             return fromMavenOpts;
         }
@@ -274,5 +383,8 @@ public class SystemProcessExecutor implements ProcessExecutor {
 
     private void logWarn(String message) {
         log.warn(message);
+    }
+
+    private record ProxyConfiguration(String host, int port) {
     }
 }

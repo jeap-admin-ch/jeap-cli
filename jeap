@@ -325,7 +325,68 @@ fi
 DOCKER_ENV_OPTS+=("-e" "JEAP_MAVEN_SETTINGS=${MAVEN_SETTINGS_IN_CONTAINER}")
 DOCKER_ENV_OPTS+=("-e" "JEAP_MAVEN_REPO_LOCAL=${MAVEN_REPO_LOCAL_IN_CONTAINER}")
 
-# Pass MAVEN_OPTS unchanged from user env and also as canonical JEAP_MAVEN_OPTS.
+build_maven_proxy_opts_from_env() {
+  python3 - <<'PY' 2>/dev/null || true
+import os
+from urllib.parse import urlsplit
+
+def has_text(value):
+    return value is not None and value.strip() != ""
+
+def first_env(*names):
+    for name in names:
+        value = os.environ.get(name)
+        if has_text(value):
+            return value.strip()
+    return None
+
+def proxy_options(protocol, proxy_url, default_port):
+    if not has_text(proxy_url):
+        return []
+    value = proxy_url if "://" in proxy_url else f"{protocol}://{proxy_url}"
+    parsed = urlsplit(value)
+    if not has_text(parsed.hostname):
+        return []
+    opts = [
+        f"-D{protocol}.proxyHost={parsed.hostname}",
+        f"-D{protocol}.proxyPort={parsed.port or default_port}",
+    ]
+    return opts
+
+def normalize_no_proxy_entry(entry):
+    entry = entry.strip()
+    if not entry:
+        return None
+    if "://" in entry:
+        entry = entry.split("://", 1)[1]
+    if "/" in entry:
+        entry = entry.split("/", 1)[0]
+    if entry.startswith("["):
+        closing = entry.find("]")
+        if closing >= 0:
+            entry = entry[:closing + 1]
+    elif entry.count(":") == 1:
+        entry = entry.rsplit(":", 1)[0]
+    if entry.startswith("."):
+        entry = "*" + entry
+    return entry or None
+
+opts = []
+opts.extend(proxy_options("http", first_env("http_proxy", "HTTP_PROXY"), 80))
+opts.extend(proxy_options("https", first_env("https_proxy", "HTTPS_PROXY"), 443))
+
+no_proxy = first_env("no_proxy", "NO_PROXY")
+if opts and has_text(no_proxy):
+    non_proxy_hosts = "|".join(filter(None, (normalize_no_proxy_entry(entry) for entry in no_proxy.split(","))))
+    if has_text(non_proxy_hosts):
+        opts.append(f"-Dhttp.nonProxyHosts={non_proxy_hosts}")
+        opts.append(f"-Dhttps.nonProxyHosts={non_proxy_hosts}")
+
+print(" ".join(opts))
+PY
+}
+
+# Pass MAVEN_OPTS from the user env, or derive it from proxy env vars when absent.
 if [[ -n "${MAVEN_OPTS:-}" && -n "${MAVEN_OPTS//[[:space:]]/}" ]]; then
   NORMALIZED_MAVEN_OPTS=$(HOST_HOME="${HOME}" RAW_MAVEN_OPTS="${MAVEN_OPTS}" python3 - <<'PY' 2>/dev/null || echo "${MAVEN_OPTS}"
 import os
@@ -342,19 +403,25 @@ PY
 )
   # Remove any host-incompatible maven.repo.local override; container uses mounted ~/.m2 repository.
   NORMALIZED_MAVEN_OPTS=$(echo "${NORMALIZED_MAVEN_OPTS}" | sed -E 's@(^|[[:space:]])-Dmaven\.repo\.local=[^[:space:]]+@@g' | xargs)
-  DOCKER_ENV_OPTS+=("-e" "MAVEN_OPTS=${NORMALIZED_MAVEN_OPTS}")
-  DOCKER_ENV_OPTS+=("-e" "JEAP_MAVEN_OPTS=${NORMALIZED_MAVEN_OPTS}")
   EFFECTIVE_MAVEN_OPTS="${NORMALIZED_MAVEN_OPTS}"
+  EFFECTIVE_HOST_MAVEN_OPTS="${MAVEN_OPTS}"
   if [[ -n "${JEAP_CLI_VERBOSE:-}" ]]; then
     echo "[INFO] Raw MAVEN_OPTS (host): ${MAVEN_OPTS}" >&2
     echo "[INFO] Normalized MAVEN_OPTS (container): ${NORMALIZED_MAVEN_OPTS}" >&2
     echo "[INFO] Using MAVEN_OPTS from user environment." >&2
   fi
 else
-  DOCKER_ENV_OPTS+=("-e" "JEAP_MAVEN_OPTS=")
-  EFFECTIVE_MAVEN_OPTS=""
-  if [[ -n "${JEAP_CLI_VERBOSE:-}" ]]; then
-    echo "[INFO] MAVEN_OPTS from user environment is empty/unset; not passing MAVEN_OPTS." >&2
+  MAVEN_PROXY_OPTS="$(build_maven_proxy_opts_from_env)"
+  if [[ -n "${MAVEN_PROXY_OPTS:-}" && -n "${MAVEN_PROXY_OPTS//[[:space:]]/}" ]]; then
+    EFFECTIVE_MAVEN_OPTS="${MAVEN_PROXY_OPTS}"
+    EFFECTIVE_HOST_MAVEN_OPTS="${MAVEN_PROXY_OPTS}"
+    echo "Fallback for http proxy in mavenopts: ${MAVEN_PROXY_OPTS}" >&2
+  else
+    EFFECTIVE_MAVEN_OPTS=""
+    EFFECTIVE_HOST_MAVEN_OPTS=""
+    if [[ -n "${JEAP_CLI_VERBOSE:-}" ]]; then
+      echo "[INFO] MAVEN_OPTS from user environment is empty/unset and no proxy fallback is available." >&2
+    fi
   fi
 fi
 
@@ -366,6 +433,13 @@ if [[ -n "${EFFECTIVE_MAVEN_OPTS:-}" ]]; then
   fi
 else
   EFFECTIVE_MAVEN_OPTS="-Daether.enhancedLocalRepository.trackingFilename=jeap-local.tracking"
+fi
+if [[ -n "${EFFECTIVE_HOST_MAVEN_OPTS:-}" ]]; then
+  if [[ "${EFFECTIVE_HOST_MAVEN_OPTS}" != *"aether.enhancedLocalRepository.trackingFilename="* ]]; then
+    EFFECTIVE_HOST_MAVEN_OPTS="${EFFECTIVE_HOST_MAVEN_OPTS} -Daether.enhancedLocalRepository.trackingFilename=jeap-local.tracking"
+  fi
+else
+  EFFECTIVE_HOST_MAVEN_OPTS="-Daether.enhancedLocalRepository.trackingFilename=jeap-local.tracking"
 fi
 DOCKER_ENV_OPTS+=("-e" "MAVEN_OPTS=${EFFECTIVE_MAVEN_OPTS}")
 DOCKER_ENV_OPTS+=("-e" "JEAP_MAVEN_OPTS=${EFFECTIVE_MAVEN_OPTS}")
@@ -432,9 +506,7 @@ if [[ "$CLI_CMD" == "migrate" ]]; then
     fi
   fi
   
-  # Use the same MAVEN_OPTS and MAVEN_CONFIG if possible, but be careful with container-specific paths.
-  # For now, just run a standard install.
-  if ! "$MVNW" install; then
+  if ! MAVEN_OPTS="${EFFECTIVE_HOST_MAVEN_OPTS}" "$MVNW" install; then
     die "Final verification (mvnw install) failed."
   fi
   echo "[INFO] Final verification successful." >&2
