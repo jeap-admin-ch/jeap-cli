@@ -20,7 +20,7 @@ The migration performs the following steps in order:
 
 1. **Prepare pom.xml for Spring Boot 4 parent upgrade** — prepares all `pom.xml` files before the parent version
    switch. This step:
-    - Sets the jEAP parent version in the root `pom.xml` to the target Spring Boot 4 alpha version
+   - Sets the jEAP parent version in the root `pom.xml` to the target Spring Boot 4 version
       (`jeap-spring-boot-parent` or `jeap-internal-spring-boot-parent`, depending on which is used)
     - Adds explicit `<dependencyManagement>` entries for dependencies that are no longer managed by the new
       parent BOMs

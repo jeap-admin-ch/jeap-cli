@@ -12,8 +12,8 @@ public class PrepareForSpringBoot4ParentUpgrade implements Step {
     // -------------------------------------------------------------------------
     // IMPORTANT: Keep the three constant blocks below in sync with each other.
     //
-    // SPRING_BOOT_4_ALPHA_PARENT_VERSIONS pins the root pom.xml <parent> to the
-    // Spring Boot 4 alpha releases of the jeap parent BOMs. These BOMs ship a
+    // SPRING_BOOT_4_PARENT_VERSIONS pins the root pom.xml <parent> to the
+    // Spring Boot 4 release of the jeap parent BOMs. These BOMs ship a
     // specific set of managed dependency versions that differs from the Spring
     // Boot 3 lineage.
     //
@@ -29,7 +29,7 @@ public class PrepareForSpringBoot4ParentUpgrade implements Step {
     // that the new parents introduced. Again, when the target versions change,
     // verify that every rename still applies and remove any that were reverted.
     // -------------------------------------------------------------------------
-    static final String JEAP_SPRING_BOOT_PARENT_SB4_VERSION = "35.2.0";
+    static final String JEAP_SPRING_BOOT_PARENT_SB4_VERSION = "35.4.0";
     static final String JEAP_INTERNAL_SPRING_BOOT_PARENT_SB4_VERSION = "7.0.0";
 
     private static final Map<String, String> SPRING_BOOT_4_PARENT_VERSIONS = Map.of(
