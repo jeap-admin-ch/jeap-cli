@@ -17,8 +17,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class UpdateMavenWrapper implements Step {
 
-    private static final String CURRENT_MAVEN_VERSION = "3.9.12";
-    private static final String CURRENT_MAVEN_VERSION_CHECKSUM = "305773a68d6ddfd413df58c82b3f8050e89778e777f3a745c8e5b8cbea4018ef";
+    private static final String CURRENT_MAVEN_VERSION = "3.9.16";
+    private static final String CURRENT_MAVEN_VERSION_CHECKSUM = "5af3b743dd8b876b5c45da33b676251e5f1687712644abb4ee519ca56e1d89ce";
 
     private static final String MAVEN_WRAPPER_PROPS_FILE = ".mvn/wrapper/maven-wrapper.properties";
     private static final String REGEX_TO_REPLACE = "\\d+\\.\\d+\\.\\d+";

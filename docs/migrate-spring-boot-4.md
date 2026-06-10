@@ -18,7 +18,11 @@ jeap migrate spring-boot-4
 
 The migration performs the following steps in order:
 
-1. **Prepare pom.xml for Spring Boot 4 parent upgrade** — prepares all `pom.xml` files before the parent version
+1. **Update Maven Wrapper** — updates the Maven Wrapper (`.mvn/wrapper/maven-wrapper.properties`) to the Maven
+   version expected by updated maven plugins so that all subsequent Maven-based steps run with the correct Maven version
+   (skipped automatically if the project does not use the Maven Wrapper)
+
+2. **Prepare pom.xml for Spring Boot 4 parent upgrade** — prepares all `pom.xml` files before the parent version
    switch. This step:
    - Sets the jEAP parent version in the root `pom.xml` to the target Spring Boot 4 version
       (`jeap-spring-boot-parent` or `jeap-internal-spring-boot-parent`, depending on which is used)
@@ -26,19 +30,19 @@ The migration performs the following steps in order:
       parent BOMs
     - Renames or replaces dependencies whose artifact coordinates changed in Spring Boot 4
 
-2. **Update jEAP Parent** — updates the jEAP parent POM to the latest version using Maven's versions plugin
+3. **Update jEAP Parent** — updates the jEAP parent POM to the latest version using Maven's versions plugin
 
-3. **Update jEAP Dependencies** — updates all jEAP dependency versions to the latest releases. Only
+4. **Update jEAP Dependencies** — updates all jEAP dependency versions to the latest releases. Only
    dependencies with an explicitly declared version in the project are updated — dependencies managed by the
    parent POM are not affected.
 
-4. **Run jEAP OpenRewrite Spring Boot 4 Recipe** to automatically migrate Spring Boot application code, configuration,
+5. **Run jEAP OpenRewrite Spring Boot 4 Recipe** to automatically migrate Spring Boot application code, configuration,
    and dependencies
 
-5. **Replace secrets location prefix in Spring properties** — replaces `aws-secretsmanager:` with
+6. **Replace secrets location prefix in Spring properties** — replaces `aws-secretsmanager:` with
    `jeap-aws-secretsmanager:` in all Spring `application.yml` / `application.properties` files
 
-6. **Verify migration with Maven install** — runs `mvn install` to confirm the migrated project builds and
+7. **Verify migration with Maven install** — runs `mvn install` to confirm the migrated project builds and
    all tests pass
 
 ## Prerequisites

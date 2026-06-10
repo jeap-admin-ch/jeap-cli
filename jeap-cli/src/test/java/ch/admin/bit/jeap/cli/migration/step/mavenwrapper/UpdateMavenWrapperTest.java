@@ -27,8 +27,8 @@ class UpdateMavenWrapperTest {
 
         String result = Files.readString(filePath);
         assertThat(result).isEqualTo("""
-                distributionUrl=https://repo.bit.admin.ch/repository/maven-central/org/apache/maven/apache-maven/3.9.12/apache-maven-3.9.12-bin.zip
-                distributionSha256Sum=305773a68d6ddfd413df58c82b3f8050e89778e777f3a745c8e5b8cbea4018ef
+                distributionUrl=https://repo.bit.admin.ch/repository/maven-central/org/apache/maven/apache-maven/3.9.16/apache-maven-3.9.16-bin.zip
+                distributionSha256Sum=5af3b743dd8b876b5c45da33b676251e5f1687712644abb4ee519ca56e1d89ce
                 wrapperSha256Sum=foobar
                 """);
 
@@ -52,7 +52,7 @@ class UpdateMavenWrapperTest {
 
         String result = Files.readString(filePath);
         assertEquals(
-                "distributionUrl=https://repo.bit.admin.ch/repository/maven-central/org/apache/maven/apache-maven/3.9.12/apache-maven-3.9.12-bin.zip\n",
+                "distributionUrl=https://repo.bit.admin.ch/repository/maven-central/org/apache/maven/apache-maven/3.9.16/apache-maven-3.9.16-bin.zip\n",
                 result);
     }
 
@@ -74,7 +74,7 @@ class UpdateMavenWrapperTest {
         assertEquals("""
                 wrapperVersion=3.3.4
                 wrapperUrl=https://repo.bit.admin.ch/repository/maven-public/org/apache/maven/wrapper/maven-wrapper/3.3.4/maven-wrapper-3.3.4.jar
-                distributionUrl=https://repo.bit.admin.ch/repository/maven-central/org/apache/maven/apache-maven/3.9.12/apache-maven-3.9.12-bin.zip
+                distributionUrl=https://repo.bit.admin.ch/repository/maven-central/org/apache/maven/apache-maven/3.9.16/apache-maven-3.9.16-bin.zip
                 """, result);
     }
 
@@ -100,8 +100,8 @@ class UpdateMavenWrapperTest {
 
         String result = Files.readString(filePath);
         assertThat(result).isEqualTo("""
-                distributionUrl=https://repo.bit.admin.ch/repository/maven-central/org/apache/maven/apache-maven/3.9.12/apache-maven-3.9.12-bin.zip
-                distributionSha256Sum=305773a68d6ddfd413df58c82b3f8050e89778e777f3a745c8e5b8cbea4018ef
+                distributionUrl=https://repo.bit.admin.ch/repository/maven-central/org/apache/maven/apache-maven/3.9.16/apache-maven-3.9.16-bin.zip
+                distributionSha256Sum=5af3b743dd8b876b5c45da33b676251e5f1687712644abb4ee519ca56e1d89ce
                 wrapperSha256Sum=foobar
                 """);
 
