@@ -74,6 +74,7 @@ mock external commands.
 ## Versioning & Conventions
 
 - Semantic Versioning; all changes documented in [CHANGELOG.md](./CHANGELOG.md) (Keep a Changelog format).
+- Keep entries CHANGELOG.md concise and to the point, follow existing patterns
 - Determine the version to bump to by using patch for bug fixes, minor for new features, and major for breaking changes
 - Use ./mvnw versions:set -DnewVersion=x.y.z -DgenerateBackupPoms=false to bump the version in all POM files
 - When working on a feature branch, increase the version to `x.y.z-SNAPSHOT` in the POMs.

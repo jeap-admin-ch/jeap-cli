@@ -8,6 +8,11 @@ spring:
   banner:
     location: "classpath:banner/cli-banner.txt"
   shell:
+    interactive:
+      # jeap-cli is a one-shot command runner (`jeap <command>`), not an interactive REPL.
+      # Spring Shell 4 defaults to interactive mode and ignores command-line arguments; disable it
+      # so the command passed on the command line (or the injected `help`) is executed and the CLI exits.
+      enabled: false
     history:
       enabled: false
 
