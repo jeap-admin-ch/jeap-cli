@@ -33,7 +33,7 @@ class RunMavenTest {
                 "Should have executed one command");
 
         FakeProcessExecutor.ExecutedCommand executed = fakeExecutor.getLastExecutedCommand();
-        assertEquals(List.of("mvn", "install"), executed.command(),
+        assertEquals(List.of("mvn", "-ntp", "install"), executed.command(),
                 "Should have executed mvn with correct arguments");
         assertEquals(tempDir, executed.workingDirectory(),
                 "Should have executed in correct directory");
@@ -69,7 +69,7 @@ class RunMavenTest {
 
         // Then the command should include all arguments
         FakeProcessExecutor.ExecutedCommand executed = fakeExecutor.getLastExecutedCommand();
-        assertEquals(List.of("mvn", "package", "-DskipTests"), executed.command(),
+        assertEquals(List.of("mvn", "-ntp", "package", "-DskipTests"), executed.command(),
                 "Should have executed mvn with all arguments");
     }
 
@@ -165,7 +165,7 @@ class RunMavenTest {
 
         // Then it should use ./mvnw instead of mvn
         FakeProcessExecutor.ExecutedCommand executed = fakeExecutor.getLastExecutedCommand();
-        assertEquals(List.of("./mvnw", "clean"), executed.command(),
+        assertEquals(List.of("./mvnw", "-ntp", "clean"), executed.command(),
                 "Should use ./mvnw when wrapper exists");
     }
 
@@ -180,7 +180,7 @@ class RunMavenTest {
 
         // Then it should use system mvn
         FakeProcessExecutor.ExecutedCommand executed = fakeExecutor.getLastExecutedCommand();
-        assertEquals(List.of("mvn", "install"), executed.command(),
+        assertEquals(List.of("mvn", "-ntp", "install"), executed.command(),
                 "Should use mvn when wrapper does not exist");
     }
 
@@ -202,7 +202,7 @@ class RunMavenTest {
 
         // Then it should fall back to system mvn
         FakeProcessExecutor.ExecutedCommand executed = fakeExecutor.getLastExecutedCommand();
-        assertEquals(List.of("mvn", "test"), executed.command(),
+        assertEquals(List.of("mvn", "-ntp", "test"), executed.command(),
                 "Should use mvn when wrapper is not executable");
     }
 }

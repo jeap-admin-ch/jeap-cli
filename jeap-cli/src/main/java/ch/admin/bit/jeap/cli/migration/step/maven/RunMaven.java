@@ -48,6 +48,8 @@ public class RunMaven implements Step {
         List<String> command = new ArrayList<>();
 
         command.add(mavenCommand);
+        // Suppress per-artifact download/upload progress lines to keep the output readable
+        command.add("-ntp");
         command.addAll(mavenArgs);
 
         ProcessExecutionResult result = processExecutor.executeAndCapture(command, workingDirectory);

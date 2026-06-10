@@ -28,6 +28,7 @@ class RunOpenRewriteRecipeTest {
         assertEquals(1, fakeExecutor.getExecutionCount());
         FakeProcessExecutor.ExecutedCommand executed = fakeExecutor.getLastExecutedCommand();
         assertEquals(List.of("mvn",
+                        "-ntp",
                         MavenPlugin.OPENREWRITE.goal("run"),
                         "-Drewrite.recipeArtifactCoordinates=org.openrewrite.recipe:rewrite-spring:RELEASE",
                         "-Drewrite.activeRecipes=org.openrewrite.java.spring.boot4.UpgradeSpringBoot_4_0",
@@ -119,6 +120,7 @@ class RunOpenRewriteRecipeTest {
 
         FakeProcessExecutor.ExecutedCommand executed = fakeExecutor.getLastExecutedCommand();
         assertEquals(List.of("mvn",
+                        "-ntp",
                         MavenPlugin.OPENREWRITE.goal("run"),
                         "-Drewrite.recipeArtifactCoordinates=org.openrewrite.recipe:rewrite-java:RELEASE",
                         "-Drewrite.activeRecipes=org.openrewrite.java.migrate.UpgradeToJava21",

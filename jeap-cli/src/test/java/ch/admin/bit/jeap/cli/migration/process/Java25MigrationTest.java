@@ -153,6 +153,7 @@ class Java25MigrationTest {
 
         FakeProcessExecutor.ExecutedCommand executedCommand = fakeExecutor.getLastExecutedCommand();
         assertEquals(List.of("mvn",
+                        "-ntp",
                         MavenPlugin.VERSIONS.goal("update-parent"),
                         "-Dincludes=ch.admin.bit.jeap",
                         "-DgenerateBackupPoms=false",

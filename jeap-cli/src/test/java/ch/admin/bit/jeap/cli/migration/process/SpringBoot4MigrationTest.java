@@ -56,6 +56,7 @@ class SpringBoot4MigrationTest {
         // First command: update jEAP dependency versions
         FakeProcessExecutor.ExecutedCommand firstCommand = fakeExecutor.getExecutedCommands().get(0);
         assertEquals(List.of("mvn",
+                        "-ntp",
                         MavenPlugin.VERSIONS.goal("use-latest-releases"),
                         "-Dincludes=ch.admin.bit.jeap",
                         "-DgenerateBackupPoms=false"),
@@ -67,6 +68,7 @@ class SpringBoot4MigrationTest {
         // Second command: OpenRewrite Spring Boot 4 migration
         FakeProcessExecutor.ExecutedCommand secondCommand = fakeExecutor.getExecutedCommands().get(1);
                 assertEquals(List.of("mvn",
+                        "-ntp",
                         MavenPlugin.OPENREWRITE.goal("run"),
                         "-Drewrite.recipeArtifactCoordinates=ch.admin.bit.jeap.openrewrite.recipe:jeap-rewrite-recipes:1.5.3,org.openrewrite.recipe:rewrite-spring:6.30.4",
                         "-Drewrite.activeRecipes=ch.admin.bit.jeap.openrewrite.recipe.UpgradeSpringBoot_4_0_NoOtherMigrations",
