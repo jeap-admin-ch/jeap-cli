@@ -25,6 +25,7 @@ class UpdateJeapParentTest {
         assertEquals(1, fakeExecutor.getExecutionCount());
         FakeProcessExecutor.ExecutedCommand executed = fakeExecutor.getLastExecutedCommand();
         assertEquals(List.of("mvn",
+                        "-ntp",
                         MavenPlugin.VERSIONS.goal("update-parent"),
                         "-Dincludes=ch.admin.bit.jeap",
                         "-DgenerateBackupPoms=false",
@@ -40,6 +41,7 @@ class UpdateJeapParentTest {
 
         FakeProcessExecutor.ExecutedCommand executed = fakeExecutor.getLastExecutedCommand();
         assertEquals(List.of("mvn",
+                        "-ntp",
                         MavenPlugin.VERSIONS.goal("update-parent"),
                         "-Dincludes=ch.admin.bit.jeap",
                         "-DgenerateBackupPoms=false"),

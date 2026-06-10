@@ -119,7 +119,7 @@ class RunCodeFormatTest {
         new RunCodeFormat(tempDir, executor).execute();
 
         assertEquals(1, executor.getExecutionCount());
-        assertEquals(List.of("mvn", "com.cosium.code:git-code-format-maven-plugin:format-code"),
+        assertEquals(List.of("mvn", "-ntp", "com.cosium.code:git-code-format-maven-plugin:format-code"),
                 executor.getLastExecutedCommand().command());
         assertEquals(subModule, executor.getLastExecutedCommand().workingDirectory());
     }

@@ -25,6 +25,7 @@ class UpdateJeapDependenciesTest {
         assertEquals(1, fakeExecutor.getExecutionCount());
         FakeProcessExecutor.ExecutedCommand executed = fakeExecutor.getLastExecutedCommand();
         assertEquals(List.of("mvn",
+                        "-ntp",
                         MavenPlugin.VERSIONS.goal("use-latest-releases"),
                         "-Dincludes=ch.admin.bit.jeap",
                         "-DgenerateBackupPoms=false",
@@ -40,6 +41,7 @@ class UpdateJeapDependenciesTest {
 
         FakeProcessExecutor.ExecutedCommand executed = fakeExecutor.getLastExecutedCommand();
         assertEquals(List.of("mvn",
+                        "-ntp",
                         MavenPlugin.VERSIONS.goal("use-latest-releases"),
                         "-Dincludes=ch.admin.bit.jeap",
                         "-DgenerateBackupPoms=false"),
