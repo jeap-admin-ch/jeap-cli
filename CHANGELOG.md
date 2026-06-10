@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2026-06-10
+
+### Changed
+
+- Migrated jeap-cli to Spring Boot 4, adapting the commands to the Spring Shell 4 annotation API.
+- The GraalVM native build requires Spring Shell 4.0.2 (annotation-based commands were not registered in native
+  images before it, spring-projects/spring-shell#1229) and removal of the `native` profile's `--future-defaults=all`
+  build argument (incompatible with Spring Boot 4's AOT reflection hints).
+- Disabled Spring Shell's interactive mode so the CLI runs the given command and exits; Spring Shell 4 otherwise
+  starts an interactive REPL and ignores the command-line arguments.
+
 ## [1.5.3] - 2026-06-10
 
 ### Changed

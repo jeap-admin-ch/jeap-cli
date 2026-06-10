@@ -6,13 +6,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
 import org.springframework.shell.test.ShellAssertions;
+import org.springframework.shell.test.ShellScreen;
 import org.springframework.shell.test.ShellTestClient;
-import org.springframework.shell.test.ShellTestClient.NonInteractiveShellSession;
 import org.springframework.shell.test.autoconfigure.ShellTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.awaitility.Awaitility.await;
 
 @ShellTest
 @Import(JeapCLI.class)
@@ -28,15 +25,12 @@ class CommandRegistrationTest {
     SpringBoot4Migration springBoot4Migration;
 
     @Test
-    void test() {
-        NonInteractiveShellSession session = client
-                .nonInterative("help")
-                .run();
+    void test() throws Exception {
+        ShellScreen screen = client.sendCommand("help");
 
-        await().atMost(15, SECONDS).untilAsserted(() ->
-                ShellAssertions.assertThat(session.screen())
-                        .containsText("migrate java-25")
-                        .containsText("migrate spring-boot-4")
-                        .containsText("AVAILABLE COMMANDS"));
+        ShellAssertions.assertThat(screen)
+                .containsText("migrate java-25")
+                .containsText("migrate spring-boot-4")
+                .containsText("AVAILABLE COMMANDS");
     }
 }
