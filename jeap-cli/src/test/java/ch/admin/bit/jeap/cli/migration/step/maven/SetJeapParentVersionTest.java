@@ -98,7 +98,7 @@ class SetJeapParentVersionTest {
 
         new SetJeapParentVersion(tempDir, Map.of(
                 "jeap-spring-boot-parent", "35.2.0",
-                "jeap-internal-spring-boot-parent", "7.0.0"
+                "jeap-internal-spring-boot-parent", "8.2.0"
         )).execute();
 
         String updated = Files.readString(rootPom);
@@ -122,11 +122,11 @@ class SetJeapParentVersionTest {
 
         new SetJeapParentVersion(tempDir, Map.of(
                 "jeap-spring-boot-parent", "35.2.0",
-                "jeap-internal-spring-boot-parent", "7.0.0"
+                "jeap-internal-spring-boot-parent", "8.2.0"
         )).execute();
 
         String updated = Files.readString(rootPom);
-        assertTrue(updated.contains("<version>7.0.0</version>"));
+        assertTrue(updated.contains("<version>8.2.0</version>"));
         assertFalse(updated.contains("<version>6.0.0</version>"));
     }
 

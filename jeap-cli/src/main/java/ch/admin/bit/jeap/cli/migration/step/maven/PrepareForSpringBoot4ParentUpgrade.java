@@ -29,8 +29,8 @@ public class PrepareForSpringBoot4ParentUpgrade implements Step {
     // that the new parents introduced. Again, when the target versions change,
     // verify that every rename still applies and remove any that were reverted.
     // -------------------------------------------------------------------------
-    static final String JEAP_SPRING_BOOT_PARENT_SB4_VERSION = "35.4.0";
-    static final String JEAP_INTERNAL_SPRING_BOOT_PARENT_SB4_VERSION = "7.0.0";
+    static final String JEAP_SPRING_BOOT_PARENT_SB4_VERSION = "35.6.0";
+    static final String JEAP_INTERNAL_SPRING_BOOT_PARENT_SB4_VERSION = "8.2.0";
 
     private static final Map<String, String> SPRING_BOOT_4_PARENT_VERSIONS = Map.of(
             "jeap-spring-boot-parent", JEAP_SPRING_BOOT_PARENT_SB4_VERSION,
