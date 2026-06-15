@@ -5,6 +5,7 @@ spring:
     name: jeap-cli
   main:
     banner-mode: console
+    web-application-type: none
   banner:
     location: "classpath:banner/cli-banner.txt"
   shell:
