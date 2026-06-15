@@ -51,6 +51,8 @@ JEAP_CLI_NO_HOST_CERTS=1 ./jeap <command>
 |--------------------------------------------------------|---------------------------------------------|
 | [migrate java-25](docs/migrate-java-25.md)             | Migrate a jEAP application to Java 25       |
 | [migrate spring-boot-4](docs/migrate-spring-boot-4.md) | Migrate a jEAP application to Spring Boot 4 |
+| [pas-backfill send](docs/pas-backfill.md)              | Submit a backfill job YAML to the PAS       |
+| [pas-backfill report](docs/pas-backfill.md)            | Read the backfill job report from the PAS   |
 
 ## Building
 
