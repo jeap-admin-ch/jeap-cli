@@ -6,7 +6,7 @@ essential tasks to facilitate efficient application development and maintenance.
 
 ## Installation
 
-You can install jEAP CLI directly from the command line using `curl`.  This will download and install the launcher
+You can install jEAP CLI directly from the command line using `curl`. This will download and install the launcher
 script system-wide under `/usr/local/bin/jeap`, making the `jeap` command available in your environment.
 
 ```bash
@@ -47,10 +47,10 @@ JEAP_CLI_NO_HOST_CERTS=1 ./jeap <command>
 
 ## Available Commands
 
-| Command                                                | Description                                               |
-|--------------------------------------------------------|-----------------------------------------------------------|
-| [migrate java-25](docs/migrate-java-25.md)             | Migrate a jEAP application to Java 25                     |
-| [migrate spring-boot-4](docs/migrate-spring-boot-4.md) | Migrate a jEAP application to Spring Boot 4 (preliminary) |
+| Command                                                | Description                                 |
+|--------------------------------------------------------|---------------------------------------------|
+| [migrate java-25](docs/migrate-java-25.md)             | Migrate a jEAP application to Java 25       |
+| [migrate spring-boot-4](docs/migrate-spring-boot-4.md) | Migrate a jEAP application to Spring Boot 4 |
 
 ## Building
 
@@ -73,7 +73,7 @@ To create a standard Java executable JAR file, run the following command. The JA
 
 ### Native build with GraalVM
 
-To create a native executable using GraalVM, run the following command. This requires GraalVM to be installed and 
+To create a native executable using GraalVM, run the following command. This requires GraalVM to be installed and
 configured in the build environment. The native executable will be generated in the `jeap-cli/target` directory.
 The release version of the CLI is built as a native executable to improve startup time.
 
@@ -113,7 +113,8 @@ export JEAP_CLI_IMAGE=jeap-cli:latest && ./jeap help
 
 ## Note
 
-This repository is part of the open source distribution of jEAP. See [github.com/jeap-admin-ch/jeap](https://github.com/jeap-admin-ch/jeap)
+This repository is part of the open source distribution of jEAP.
+See [github.com/jeap-admin-ch/jeap](https://github.com/jeap-admin-ch/jeap)
 for more information.
 
 ## License

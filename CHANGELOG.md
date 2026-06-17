@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.2] - 2026-06-17
+
+### Changed
+
+- Removed the "preliminary release" designation from the Spring Boot 4 migration command in the README, documentation, and changelog
+- Minor formatting cleanup in the README and Spring Boot 4 migration documentation
+
 ## [1.6.1] - 2026-06-12
 
 ### Changed
@@ -84,7 +91,6 @@ Added new Spring Boot 4 preparation step (`PrepareForSpringBoot4ParentUpgrade`) 
 
 - Add Spring Boot 4 migration command (`migrate spring-boot-4`) with jEAP parent update, jEAP dependency update, and
   OpenRewrite Spring Boot 4 recipe execution
-  - Note: This command is a preliminary release and not yet ready for production use until jEAP supports Spring Boot 4
 - Add dedicated `UpdateJeapParent`, `UpdateJeapDependencies`, and `RunOpenRewriteRecipe` step classes for reusable Maven
   plugin invocations
 
