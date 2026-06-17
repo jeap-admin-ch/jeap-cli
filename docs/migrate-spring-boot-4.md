@@ -1,7 +1,4 @@
-# Migrate to Spring Boot 4 (Preliminary Release)
-
-> **Note:** This migration support is a preliminary release. It may be subject to changes as Spring Boot 4 Migration
-> for jEAP stabilizes.
+# Migrate to Spring Boot 4
 
 Migrates a jEAP application to Spring Boot 4.
 
