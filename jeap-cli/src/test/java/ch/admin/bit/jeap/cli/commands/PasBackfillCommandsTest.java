@@ -22,13 +22,25 @@ class PasBackfillCommandsTest {
     @Test
     void sendReadsAccessTokenFromStdin() {
         PasBackfillService service = mock(PasBackfillService.class);
-        when(service.send(eq(Path.of("backfill-job.yaml")), eq(JOB_ID), eq(BASE_URL), eq("stdin-token")))
+        when(service.send(eq(Path.of("backfill-job.yaml")), eq(null), eq(JOB_ID), eq(BASE_URL), eq("stdin-token")))
                 .thenReturn("ok");
         PasBackfillCommands commands = commands(service, "stdin-token\n");
 
-        commands.send("backfill-job.yaml", JOB_ID, BASE_URL, null);
+        commands.send("backfill-job.yaml", null, JOB_ID, BASE_URL, null);
 
-        verify(service).send(Path.of("backfill-job.yaml"), JOB_ID, BASE_URL, "stdin-token");
+        verify(service).send(Path.of("backfill-job.yaml"), null, JOB_ID, BASE_URL, "stdin-token");
+    }
+
+    @Test
+    void sendForwardsReferencesCsv() {
+        PasBackfillService service = mock(PasBackfillService.class);
+        when(service.send(eq(Path.of("backfill-job.yaml")), eq(Path.of("references.csv")), eq(JOB_ID), eq(BASE_URL), eq("stdin-token")))
+                .thenReturn("ok");
+        PasBackfillCommands commands = commands(service, "stdin-token\n");
+
+        commands.send("backfill-job.yaml", "references.csv", JOB_ID, BASE_URL, null);
+
+        verify(service).send(Path.of("backfill-job.yaml"), Path.of("references.csv"), JOB_ID, BASE_URL, "stdin-token");
     }
 
     @Test

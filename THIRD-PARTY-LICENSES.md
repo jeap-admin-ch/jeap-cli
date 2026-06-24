@@ -20,6 +20,7 @@ Apache License Version 2.0
  * Byte Buddy agent - [net.bytebuddy:byte-buddy-agent](https://bytebuddy.net/byte-buddy-agent)
  * ASM based accessors helper used by json-smart - [net.minidev:accessors-smart](https://urielch.github.io/)
  * JSON Small and Fast Parser - [net.minidev:json-smart](https://urielch.github.io/)
+ * Apache Commons CSV - [org.apache.commons:commons-csv](https://commons.apache.org/proper/commons-csv/)
  * Apache Log4j API - [org.apache.logging.log4j:log4j-api](https://logging.apache.org/log4j/2.x/)
  * Log4j API to SLF4J Adapter - [org.apache.logging.log4j:log4j-to-slf4j](https://logging.apache.org/log4j/2.x/)
  * org.apiguardian:apiguardian-api - [org.apiguardian:apiguardian-api](https://github.com/apiguardian-team/apiguardian)
