@@ -25,18 +25,30 @@ echo "$PAS_ACCESS_TOKEN" | ./jeap pas-backfill send \
   --url=https://pas.example.com/process-archive-service
 ```
 
+To keep large reference lists outside the YAML file, provide metadata in the YAML and load references from a CSV file:
+
+```bash
+echo "$PAS_ACCESS_TOKEN" | ./jeap pas-backfill send \
+  --file=backfill-job.yaml \
+  --references-csv=references.csv \
+  --job-id=88dbb65f-9634-4685-bc86-17b72d715d3e \
+  --url=https://pas.example.com/process-archive-service
+```
+
 Arguments:
 
-| Argument         | Required | Description                                                                 |
-|------------------|----------|-----------------------------------------------------------------------------|
-| `--file`         | yes      | Path to the input backfill job YAML file, for example `backfill-job.yaml`.   |
-| `--url`          | yes      | Base URL of the Process Archive Service including its servlet context path, for example `https://pas.example.com/process-archive-service`. |
-| `--job-id`       | no       | Unique job UUID. If omitted, the CLI generates a random UUID.                |
-| `--access-token` | no       | PAS access token. If omitted, the token is read from stdin.                  |
+| Argument | Required | Description |
+| --- | --- | --- |
+| `--file` | yes | Path to the input backfill job YAML file, for example `backfill-job.yaml`. |
+| `--references-csv` | no | Path to a UTF-8 CSV file containing `id,version` archive data references. |
+| `--url` | yes | Base URL of the Process Archive Service including its servlet context path, for example `https://pas.example.com/process-archive-service`. |
+| `--job-id` | no | Unique job UUID. If omitted, the CLI generates a random UUID. |
+| `--access-token` | no | PAS access token. If omitted, the token is read from stdin. |
 
-The command sends the input file as `application/yaml` to the PAS job endpoint. See
+The command sends a complete backfill job request as `application/yaml` to the PAS job endpoint. With
+`--references-csv`, the CLI merges the CSV references with the YAML metadata before sending the request. See
 [Job YAML format](#job-yaml-format) below for the YAML structure, endpoint behavior, and possible
-responses. On success, it prints the created job id status message to stdout.
+responses. On success, it prints the created job id status message and number of submitted references to stdout.
 
 ## Read a Backfill Report
 
@@ -73,7 +85,11 @@ Content-Type: application/yaml
 
 Required role: `backfilljob:write`.
 
-### Unversioned Data Reader Endpoint
+### YAML with Embedded References
+
+Use this shape when all archive data references are maintained directly in the YAML file.
+
+#### Unversioned Data Reader Endpoint
 
 Use this shape when the configured data reader endpoint does not contain `{version}`, for example:
 `https://source-service.example/api/archive-data/{id}`.
@@ -86,7 +102,7 @@ archiveDataReferences:
   - id: DOC-2024-002
 ```
 
-### Versioned Data Reader Endpoint
+#### Versioned Data Reader Endpoint
 
 Use this shape when the configured data reader endpoint contains `{version}`, for example:
 `https://source-service.example/api/archive-data/{id}?version={version}`. In this case every reference must include
@@ -101,6 +117,54 @@ archiveDataReferences:
   - id: DOC-2024-002
     version: 1
 ```
+
+### YAML Metadata with CSV References
+
+Use this shape with `--references-csv` when references are exported from a database or another external system.
+The YAML file must not contain `archiveDataReferences` in this mode.
+
+```yaml
+message: JmeDecreeDocumentCreatedEvent
+topic: jme-process-archive-decreedocumentcreated
+num-of-retry: 1
+```
+
+The CSV file must be UTF-8 encoded and start with the exact header line `id,version`. Blank lines and lines whose first
+non-whitespace character is `#` are ignored.
+
+```csv
+id,version
+DOC-2024-001,1
+DOC-2024-002,1
+DOC-2024-003,2
+DOC-2024-004,1
+DECREE-2023-10042,3
+DECREE-2023-10043,1
+CONTRACT-2022-88712,1
+```
+
+| CSV field | Required | Description |
+| --- | --- | --- |
+| `id` | yes | Business reference id. It may have any length but must not be empty. |
+| `version` | yes | Positive integer version. It must be parseable and `>= 1`. |
+
+Duplicate CSV references with the same `id` and `version` are reported as warnings and sent only once:
+
+```text
+Warning: Duplicate reference id=DOC-001 version=1 on line 12. Will be sent once.
+```
+
+### CLI-side Validation
+
+The CLI validates the reference source before calling PAS:
+
+| Condition | Error |
+| --- | --- |
+| YAML contains `archiveDataReferences` and `--references-csv` is provided | `Error: archiveDataReferences defined in both YAML and --references-csv. Use one source only.` |
+| Neither YAML references nor `--references-csv` are provided | `Error: No archiveDataReferences provided. Define them in the YAML file or use --references-csv.` |
+| CSV version is invalid | `Error: Invalid version 'abc' on line 5. Must be a positive integer.` |
+| CSV id is empty | `Error: Empty id on line 7.` |
+| CSV header is missing | `Error: CSV file must start with header line: id,version` |
 
 ### Fields
 

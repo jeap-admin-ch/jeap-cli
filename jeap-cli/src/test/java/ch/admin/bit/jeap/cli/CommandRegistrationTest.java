@@ -49,6 +49,7 @@ class CommandRegistrationTest {
                 .containsText("pas-backfill send")
                 .containsText("Submit a backfill job YAML to the PAS")
                 .containsText("--file")
+                .containsText("--references-csv")
                 .containsText("--job-id")
                 .containsText("--url")
                 .containsText("--access-token");

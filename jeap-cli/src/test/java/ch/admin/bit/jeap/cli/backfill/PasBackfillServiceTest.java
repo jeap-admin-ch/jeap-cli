@@ -3,6 +3,7 @@ package ch.admin.bit.jeap.cli.backfill;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.springframework.mock.http.client.MockClientHttpRequest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
@@ -12,7 +13,11 @@ import org.springframework.web.client.RestClient;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.charset.StandardCharsets;
+import java.util.regex.Pattern;
 
+import static org.hamcrest.Matchers.allOf;
+import static org.hamcrest.Matchers.containsString;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.client.ExpectedCount.once;
@@ -41,25 +46,139 @@ class PasBackfillServiceTest {
     void setUp() {
         RestClient.Builder restClientBuilder = RestClient.builder();
         server = MockRestServiceServer.bindTo(restClientBuilder).build();
-        service = new PasBackfillService(restClientBuilder);
+        service = new PasBackfillService(restClientBuilder, new BackfillReferenceCsvParser());
     }
 
     @Test
-    void sendReadsYamlAndPutsJobWithBearerToken() throws Exception {
+    void sendWithYamlReferencesPutsCompleteJobWithBearerToken() throws Exception {
         Path yamlFile = tempDir.resolve("backfill-job.yaml");
-        String yaml = "message: TestEvent\n";
+        String yaml = """
+                message: TestEvent
+                topic: test-topic
+                num-of-retry: 1
+                archiveDataReferences:
+                  - id: DOC-2024-001
+                    version: 1
+                """;
         Files.writeString(yamlFile, yaml);
         server.expect(once(), requestTo(JOB_URL))
                 .andExpect(method(HttpMethod.PUT))
                 .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer " + ACCESS_TOKEN))
                 .andExpect(content().contentType(APPLICATION_YAML))
-                .andExpect(content().string(yaml))
+                .andExpect(content().string(allOf(
+                        containsString("message: \"TestEvent\""),
+                        containsString("topic: \"test-topic\""),
+                        containsString("num-of-retry: 1"),
+                        containsString("archiveDataReferences:"),
+                        containsString("id: \"DOC-2024-001\""),
+                        containsString("version: 1"))))
                 .andRespond(withStatus(HttpStatus.CREATED));
 
         String result = service.send(yamlFile, JOB_ID, BASE_URL, ACCESS_TOKEN);
 
-        assertThat(result).isEqualTo("Backfill job " + JOB_ID + " created successfully.");
+        assertThat(result).isEqualTo("Backfill job " + JOB_ID + " created successfully. 1 references submitted.");
         server.verify();
+    }
+
+    @Test
+    void sendWithReferencesCsvMergesReferencesIntoYamlMetadata() throws Exception {
+        Path yamlFile = tempDir.resolve("backfill-job.yaml");
+        Files.writeString(yamlFile, """
+                message: TestEvent
+                topic: test-topic
+                num-of-retry: 1
+                """);
+        Path csvFile = tempDir.resolve("references.csv");
+        Files.writeString(csvFile, """
+                id,version
+                DOC-2024-001,1
+                DOC-2024-002,2
+                """);
+        server.expect(once(), requestTo(JOB_URL))
+                .andExpect(method(HttpMethod.PUT))
+                .andExpect(content().contentType(APPLICATION_YAML))
+                .andExpect(content().string(allOf(
+                        containsString("message: \"TestEvent\""),
+                        containsString("topic: \"test-topic\""),
+                        containsString("id: \"DOC-2024-001\""),
+                        containsString("version: 1"),
+                        containsString("id: \"DOC-2024-002\""),
+                        containsString("version: 2"))))
+                .andRespond(withStatus(HttpStatus.CREATED));
+
+        String result = service.send(yamlFile, csvFile, JOB_ID, BASE_URL, ACCESS_TOKEN);
+
+        assertThat(result).isEqualTo("Backfill job " + JOB_ID + " created successfully. 2 references submitted.");
+        server.verify();
+    }
+
+    @Test
+    void sendWithHundredCsvReferencesSubmitsHundredReferences() throws Exception {
+        Path yamlFile = tempDir.resolve("backfill-job.yaml");
+        Files.writeString(yamlFile, """
+                message: TestEvent
+                topic: test-topic
+                """);
+        Path csvFile = tempDir.resolve("references.csv");
+        StringBuilder csv = new StringBuilder("id,version\n");
+        for (int index = 1; index <= 100; index++) {
+            csv.append("DOC-").append("%03d".formatted(index)).append(",").append(index).append("\n");
+        }
+        Files.writeString(csvFile, csv);
+        server.expect(once(), requestTo(JOB_URL))
+                .andExpect(request -> {
+                    String body = ((MockClientHttpRequest) request).getBodyAsString(StandardCharsets.UTF_8);
+                    assertThat(Pattern.compile("id: ").matcher(body).results()).hasSize(100);
+                    assertThat(body).contains("id: \"DOC-001\"", "version: 1", "id: \"DOC-100\"", "version: 100");
+                })
+                .andRespond(withStatus(HttpStatus.CREATED));
+
+        String result = service.send(yamlFile, csvFile, JOB_ID, BASE_URL, ACCESS_TOKEN);
+
+        assertThat(result).isEqualTo("Backfill job " + JOB_ID + " created successfully. 100 references submitted.");
+        server.verify();
+    }
+
+    @Test
+    void sendFailsWhenYamlAndCsvReferencesAreProvided() throws Exception {
+        Path csvFile = tempDir.resolve("references.csv");
+        Files.writeString(csvFile, """
+                id,version
+                DOC-2024-001,1
+                """);
+
+        assertThatThrownBy(() -> service.send(yamlFile(), csvFile, JOB_ID, BASE_URL, ACCESS_TOKEN))
+                .isInstanceOf(PasBackfillException.class)
+                .hasMessage("Error: archiveDataReferences defined in both YAML and --references-csv. Use one source only.");
+    }
+
+    @Test
+    void sendFailsWhenNoReferencesAreProvided() throws Exception {
+        Path yamlFile = tempDir.resolve("backfill-job.yaml");
+        Files.writeString(yamlFile, """
+                message: TestEvent
+                topic: test-topic
+                """);
+
+        assertThatThrownBy(() -> service.send(yamlFile, null, JOB_ID, BASE_URL, ACCESS_TOKEN))
+                .isInstanceOf(PasBackfillException.class)
+                .hasMessage("Error: No archiveDataReferences provided. Define them in the YAML file or use --references-csv.");
+    }
+
+    @Test
+    void sendWrapsInvalidYamlReferenceVersion() throws Exception {
+        Path yamlFile = tempDir.resolve("backfill-job.yaml");
+        Files.writeString(yamlFile, """
+                message: TestEvent
+                topic: test-topic
+                archiveDataReferences:
+                  - id: DOC-2024-001
+                    version: abc
+                """);
+
+        assertThatThrownBy(() -> service.send(yamlFile, null, JOB_ID, BASE_URL, ACCESS_TOKEN))
+                .isInstanceOf(PasBackfillException.class)
+                .hasMessage("Invalid YAML value 'abc' for archiveDataReferences[].version. Must be an integer.");
     }
 
     @Test
@@ -70,7 +189,7 @@ class PasBackfillServiceTest {
 
         String result = service.send(yamlFile, JOB_ID, BASE_URL, ACCESS_TOKEN);
 
-        assertThat(result).isEqualTo("Backfill job " + JOB_ID + " created successfully.");
+        assertThat(result).isEqualTo("Backfill job " + JOB_ID + " created successfully. 1 references submitted.");
         server.verify();
     }
 
@@ -203,7 +322,7 @@ class PasBackfillServiceTest {
 
         String result = service.send(yamlFile, JOB_ID, BASE_URL, ACCESS_TOKEN);
 
-        assertThat(result).isEqualTo("Backfill job " + JOB_ID + " created successfully.");
+        assertThat(result).isEqualTo("Backfill job " + JOB_ID + " created successfully. 1 references submitted.");
         server.verify();
     }
 
@@ -215,7 +334,7 @@ class PasBackfillServiceTest {
 
         String result = service.send(yamlFile, JOB_ID, BASE_URL, ACCESS_TOKEN);
 
-        assertThat(result).isEqualTo("Backfill job " + JOB_ID + " created successfully.");
+        assertThat(result).isEqualTo("Backfill job " + JOB_ID + " created successfully. 1 references submitted.");
         server.verify();
     }
 
@@ -244,7 +363,13 @@ class PasBackfillServiceTest {
 
     private Path yamlFile() throws Exception {
         Path yamlFile = tempDir.resolve("backfill-job.yaml");
-        Files.writeString(yamlFile, "message: TestEvent\n");
+        Files.writeString(yamlFile, """
+                message: TestEvent
+                topic: test-topic
+                archiveDataReferences:
+                  - id: DOC-2024-001
+                    version: 1
+                """);
         return yamlFile;
     }
 }
