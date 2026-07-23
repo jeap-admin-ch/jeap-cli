@@ -28,7 +28,7 @@ public class RunOpenRewriteRecipe implements Step {
     private final String recipeName;
 
     private static final List<String> CRITICAL_OLD_TYPE_MARKERS = List.of(
-            "org.springframework.security.web.util.matcher.AntPathRequestMatcher",
+            "AntPathRequestMatcher",
             "org.springframework.boot.web.server.ErrorPage",
             "org.springframework.boot.web.servlet.server.ConfigurableServletWebServerFactory",
             "org.springframework.boot.web.servlet.error.DefaultErrorAttributes"
