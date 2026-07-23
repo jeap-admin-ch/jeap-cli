@@ -128,4 +128,30 @@ class RunOpenRewriteRecipeTest {
                         "-Dmaven.compiler.failOnError=false"),
                 executed.command());
     }
+
+    @Test
+    void testFailsWhenAntPathRequestMatcherRemainsWithWildcardImport() throws IOException {
+        Path source = tempDir.resolve("src/main/java/WebSecurityConfig.java");
+        Files.createDirectories(source.getParent());
+        Files.writeString(source, """
+                import org.springframework.security.web.util.matcher.*;
+
+                class WebSecurityConfig {
+                    Object matcher() {
+                        return new AntPathRequestMatcher("/api/**");
+                    }
+                }
+                """);
+        FakeProcessExecutor fakeExecutor = new FakeProcessExecutor(0);
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> new RunOpenRewriteRecipe(tempDir, fakeExecutor,
+                        "org.openrewrite.recipe:rewrite-spring:RELEASE",
+                        "org.openrewrite.java.spring.boot4.UpgradeSpringBoot_4_0").execute());
+
+        assertEquals(2, fakeExecutor.getExecutionCount());
+        assertEquals("OpenRewrite completed but critical legacy markers are still present. " +
+                     "Please inspect migration logs and verify recipe artifact resolution.",
+                exception.getMessage());
+    }
 }
