@@ -13,6 +13,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SpringBoot4MigrationTest {
 
@@ -48,6 +49,9 @@ class SpringBoot4MigrationTest {
         // When running the Spring Boot 4 migration
         Migration migration = new SpringBoot4Migration(fakeExecutor);
         migration.migrate(tempDir);
+
+        assertTrue(Files.readString(pomPath).contains("<version>8.5.5</version>"),
+                "Should update the internal jEAP parent to the latest version");
 
         // Then two Maven commands should have been executed
         assertEquals(2, fakeExecutor.getExecutionCount(),

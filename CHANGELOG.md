@@ -5,12 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.8.2]
+## [1.8.2] - 2026-07-27
 
 ### Fixed
 
 - Spring Boot 4 migration now handles wildcard-imported security matchers, remaining JUnit 4 assertions, and ambiguous Spring `MediaType` imports.
 - Fail the OpenRewrite step when an `AntPathRequestMatcher` usage remains after migration.
+
+### Changed
+
+- Updated Spring Boot 4 migration targets to `jeap-spring-boot-parent` 37.6.0 and `jeap-internal-spring-boot-parent` 8.5.5.
+- Updated the Spring Boot 4 migration to use the released `jeap-rewrite-recipes` 1.5.4.
 
 ## [1.8.1]
 
