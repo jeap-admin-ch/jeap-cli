@@ -72,7 +72,7 @@ public class SpringBoot4Migration implements Migration {
                 //    (Spring Security 7) and ChangeType recipes for ErrorPage,
                 //    ConfigurableServletWebServerFactory, DefaultErrorAttributes package moves.
                 new RunOpenRewriteRecipe(root, processExecutor,
-                        "ch.admin.bit.jeap.openrewrite.recipe:jeap-rewrite-recipes:1.5.5,org.openrewrite.recipe:rewrite-spring:6.30.4",
+                        "ch.admin.bit.jeap.openrewrite.recipe:jeap-rewrite-recipes:1.5.6,org.openrewrite.recipe:rewrite-spring:6.30.4",
                         "ch.admin.bit.jeap.openrewrite.recipe.UpgradeSpringBoot_4_0_NoOtherMigrations"),
 
                 // 4) Override secrets location prefix in spring properties
