@@ -37,6 +37,28 @@ class PrepareForSpringBoot4ParentUpgradeTest {
     }
 
     @Test
+    void updatesPublicJeapParentToCurrentSpringBoot4Version() throws Exception {
+        Path rootPom = tempDir.resolve("pom.xml");
+        Files.writeString(rootPom, """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <project xmlns="http://maven.apache.org/POM/4.0.0">
+                    <modelVersion>4.0.0</modelVersion>
+                    <parent>
+                        <groupId>ch.admin.bit.jeap</groupId>
+                        <artifactId>jeap-spring-boot-parent</artifactId>
+                        <version>37.6.0</version>
+                    </parent>
+                    <artifactId>test-service</artifactId>
+                    <version>1.0.0</version>
+                </project>
+                """);
+
+        createStep(Map.of()).execute();
+
+        assertTrue(Files.readString(rootPom).contains("<version>38.0.1</version>"));
+    }
+
+    @Test
     void addsProjectLevelDependencyManagementAndRemovesLocalVersionsInModules() throws Exception {
         Path rootPom = tempDir.resolve("pom.xml");
         Path moduleDir = tempDir.resolve("module-a");

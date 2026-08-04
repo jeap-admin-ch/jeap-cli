@@ -74,7 +74,7 @@ class SpringBoot4MigrationTest {
                 assertEquals(List.of("mvn",
                         "-ntp",
                         MavenPlugin.OPENREWRITE.goal("run"),
-                        "-Drewrite.recipeArtifactCoordinates=ch.admin.bit.jeap.openrewrite.recipe:jeap-rewrite-recipes:1.5.5,org.openrewrite.recipe:rewrite-spring:6.30.4",
+                        "-Drewrite.recipeArtifactCoordinates=ch.admin.bit.jeap.openrewrite.recipe:jeap-rewrite-recipes:1.5.6,org.openrewrite.recipe:rewrite-spring:6.30.4",
                         "-Drewrite.activeRecipes=ch.admin.bit.jeap.openrewrite.recipe.UpgradeSpringBoot_4_0_NoOtherMigrations",
                         "-Drewrite.exportDatatables=true",
                         "-Dmaven.compiler.failOnError=false"),
