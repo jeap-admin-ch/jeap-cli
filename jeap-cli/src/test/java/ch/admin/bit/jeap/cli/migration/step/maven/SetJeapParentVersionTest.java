@@ -152,6 +152,51 @@ class SetJeapParentVersionTest {
         assertEquals(pom, Files.readString(rootPom));
     }
 
+    @Test
+    void keepsExistingParentVersionWhenItIsHigherThanTarget() throws Exception {
+        Path rootPom = tempDir.resolve("pom.xml");
+        String pom = """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <project>
+                    <parent>
+                        <groupId>ch.admin.bit.jeap</groupId>
+                        <artifactId>jeap-spring-boot-parent</artifactId>
+                        <version>38.1.0-SNAPSHOT</version>
+                    </parent>
+                </project>
+                """;
+        Files.writeString(rootPom, pom);
+
+        new SetJeapParentVersion(tempDir, Map.of(
+                "jeap-spring-boot-parent", "38.0.1"
+        )).execute();
+
+        assertEquals(pom, Files.readString(rootPom));
+    }
+
+    @Test
+    void replacesSnapshotWhenItsNumericVersionMatchesTargetRelease() throws Exception {
+        Path rootPom = tempDir.resolve("pom.xml");
+        Files.writeString(rootPom, """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <project>
+                    <parent>
+                        <groupId>ch.admin.bit.jeap</groupId>
+                        <artifactId>jeap-spring-boot-parent</artifactId>
+                        <version>38.0.1-SNAPSHOT</version>
+                    </parent>
+                </project>
+                """);
+
+        new SetJeapParentVersion(tempDir, Map.of(
+                "jeap-spring-boot-parent", "38.0.1"
+        )).execute();
+
+        String updated = Files.readString(rootPom);
+        assertTrue(updated.contains("<version>38.0.1</version>"));
+        assertFalse(updated.contains("38.0.1-SNAPSHOT"));
+    }
+
     private static void assertEquals(String expected, String actual) {
         org.junit.jupiter.api.Assertions.assertEquals(expected, actual);
     }

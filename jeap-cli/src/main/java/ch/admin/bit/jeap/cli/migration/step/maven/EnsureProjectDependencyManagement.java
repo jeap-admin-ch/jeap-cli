@@ -34,6 +34,12 @@ class EnsureProjectDependencyManagement implements Step {
 
     private static final String POM_XML_FILE = "pom.xml";
     private static final String HIBERNATE_JPAMODELGEN_FALLBACK_VERSION = "7.1.1.Final";
+    private static final Pattern DEPENDENCY_MANAGEMENT_CONTENT_PATTERN = Pattern.compile(
+            "(<dependencyManagement>[\\s\\S]*?<dependencies>)(.*?)(</dependencies>[\\s\\S]*?</dependencyManagement>)",
+            Pattern.DOTALL);
+    private static final Pattern XML_TAG_PATTERN = Pattern.compile(
+            "<!--.*?-->|<\\?.*?\\?>|<![^>]*>|<(/?)([A-Za-z_][\\w:.-]*)(?:\\s[^<>]*?)?(/?)>",
+            Pattern.DOTALL);
 
     private final Path rootDirectory;
     private final List<String> dependenciesToManage;
@@ -244,8 +250,13 @@ class EnsureProjectDependencyManagement implements Step {
     }
 
     private boolean isManagedInDependencyManagement(String pomContent, String coordinate) {
-        Matcher matcher = Pattern.compile("(<dependencyManagement>[\\s\\S]*?<dependencies>)(.*?)(</dependencies>[\\s\\S]*?</dependencyManagement>)", Pattern.DOTALL)
-                .matcher(pomContent);
+        Optional<ElementRange> rootDependencyManagement = findRootDependencyManagement(pomContent);
+        if (rootDependencyManagement.isEmpty()) {
+            return false;
+        }
+        ElementRange range = rootDependencyManagement.get();
+        Matcher matcher = DEPENDENCY_MANAGEMENT_CONTENT_PATTERN
+                .matcher(pomContent.substring(range.start(), range.end()));
         if (!matcher.find()) {
             return false;
         }
@@ -266,16 +277,20 @@ class EnsureProjectDependencyManagement implements Step {
     }
 
     private String insertIntoDependencyManagement(String pomContent, String dependencyEntries) {
-        Matcher existingDependencyManagement = Pattern.compile(
-                "(<dependencyManagement>[\\s\\S]*?<dependencies>)(.*?)(</dependencies>[\\s\\S]*?</dependencyManagement>)",
-                Pattern.DOTALL
-        ).matcher(pomContent);
-        if (existingDependencyManagement.find()) {
+        Optional<ElementRange> rootDependencyManagement = findRootDependencyManagement(pomContent);
+        if (rootDependencyManagement.isPresent()) {
+            ElementRange range = rootDependencyManagement.get();
+            String dependencyManagement = pomContent.substring(range.start(), range.end());
+            Matcher existingDependencyManagement = DEPENDENCY_MANAGEMENT_CONTENT_PATTERN.matcher(dependencyManagement);
+            if (!existingDependencyManagement.find()) {
+                return pomContent;
+            }
             String replacement = existingDependencyManagement.group(1) +
                     existingDependencyManagement.group(2) +
                     dependencyEntries + "\n        " +
                     existingDependencyManagement.group(3);
-            return existingDependencyManagement.replaceFirst(Matcher.quoteReplacement(replacement));
+            String updatedDependencyManagement = existingDependencyManagement.replaceFirst(Matcher.quoteReplacement(replacement));
+            return pomContent.substring(0, range.start()) + updatedDependencyManagement + pomContent.substring(range.end());
         }
 
         String dependencyManagementBlock = "\n    <dependencyManagement>\n" +
@@ -290,26 +305,41 @@ class EnsureProjectDependencyManagement implements Step {
         return pomContent.substring(0, insertIndex) + dependencyManagementBlock + pomContent.substring(insertIndex);
     }
 
+    private Optional<ElementRange> findRootDependencyManagement(String pomContent) {
+        Matcher tagMatcher = XML_TAG_PATTERN.matcher(pomContent);
+        int depth = 0;
+        int dependencyManagementStart = -1;
+
+        while (tagMatcher.find()) {
+            String tagName = tagMatcher.group(2);
+            if (tagName == null) {
+                continue;
+            }
+            String localName = tagName.contains(":") ? tagName.substring(tagName.indexOf(':') + 1) : tagName;
+            boolean closingTag = "/".equals(tagMatcher.group(1));
+            boolean selfClosingTag = "/".equals(tagMatcher.group(3));
+
+            if (closingTag) {
+                depth--;
+                if (dependencyManagementStart >= 0 && depth == 1 && "dependencyManagement".equals(localName)) {
+                    return Optional.of(new ElementRange(dependencyManagementStart, tagMatcher.end()));
+                }
+            } else {
+                if (depth == 1 && "dependencyManagement".equals(localName)) {
+                    dependencyManagementStart = tagMatcher.start();
+                }
+                if (!selfClosingTag) {
+                    depth++;
+                }
+            }
+        }
+        return Optional.empty();
+    }
+
     private int findBestDependencyManagementInsertPosition(String pomContent) {
-        int dependenciesIndex = pomContent.indexOf("<dependencies>");
-        int dependencyManagementIndex = pomContent.indexOf("<dependencyManagement>");
-
-        if (dependenciesIndex >= 0 && (dependencyManagementIndex < 0 || dependenciesIndex < dependencyManagementIndex)) {
-            // Root-level <dependencies> comes before any <dependencyManagement> — safe insert position
-            return dependenciesIndex;
-        }
-
-        // <dependencies> is inside an existing <dependencyManagement>, insert after its closing tag
-        int lastEndDM = pomContent.lastIndexOf("</dependencyManagement>");
-        if (lastEndDM >= 0) {
-            return lastEndDM + "</dependencyManagement>".length();
-        }
-
-        int buildIndex = pomContent.indexOf("<build>");
-        if (buildIndex >= 0) {
-            return buildIndex;
-        }
-        return pomContent.indexOf("</project>");
+        // The closing project tag is the only position that is guaranteed to be at project level.
+        // A plain search for <dependencies> can match dependencies of a plugin or profile.
+        return pomContent.lastIndexOf("</project>");
     }
 
     private boolean containsGroupAndArtifact(String depBlock, String groupId, String artifactId) {
@@ -321,6 +351,9 @@ class EnsureProjectDependencyManagement implements Step {
     private String[] splitCoordinate(String coordinate) {
         int separator = coordinate.indexOf(':');
         return new String[]{coordinate.substring(0, separator), coordinate.substring(separator + 1)};
+    }
+
+    private record ElementRange(int start, int end) {
     }
 
     @FunctionalInterface

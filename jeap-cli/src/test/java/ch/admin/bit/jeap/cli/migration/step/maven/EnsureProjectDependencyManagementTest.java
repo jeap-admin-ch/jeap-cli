@@ -2,6 +2,11 @@ package ch.admin.bit.jeap.cli.migration.step.maven;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.w3c.dom.Document;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+
+import javax.xml.parsers.DocumentBuilderFactory;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -11,6 +16,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class EnsureProjectDependencyManagementTest {
@@ -115,6 +121,116 @@ class EnsureProjectDependencyManagementTest {
 
         assertTrue(step.projectManagedDependencies().contains("com.example:lib-a"));
         assertTrue(step.projectManagedDependencies().contains("com.example:lib-b"));
+    }
+
+    @Test
+    void addsDependencyManagementAtProjectLevelWhenOnlyPluginDependenciesExist() throws Exception {
+        Path rootPom = tempDir.resolve("pom.xml");
+        Files.writeString(rootPom, """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <project xmlns="http://maven.apache.org/POM/4.0.0">
+                    <modelVersion>4.0.0</modelVersion>
+                    <groupId>com.example</groupId>
+                    <artifactId>root</artifactId>
+                    <version>1.0.0</version>
+                    <build>
+                        <plugins>
+                            <plugin>
+                                <groupId>com.example</groupId>
+                                <artifactId>example-plugin</artifactId>
+                                <dependencies>
+                                    <dependency>
+                                        <groupId>com.example</groupId>
+                                        <artifactId>plugin-library</artifactId>
+                                        <version>1.0.0</version>
+                                    </dependency>
+                                </dependencies>
+                            </plugin>
+                        </plugins>
+                    </build>
+                </project>
+                """);
+
+        createStep(List.of("commons-io:commons-io"), Map.of("commons-io:commons-io", "2.99.0")).execute();
+
+        Document document = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(rootPom.toFile());
+        assertEquals(1, document.getElementsByTagName("dependencyManagement").getLength());
+        assertSame(document.getDocumentElement(),
+                document.getElementsByTagName("dependencyManagement").item(0).getParentNode());
+    }
+
+    @Test
+    void addsDependencyManagementAlongsideExistingProjectDependencies() throws Exception {
+        Path rootPom = tempDir.resolve("pom.xml");
+        Files.writeString(rootPom, """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <project xmlns="http://maven.apache.org/POM/4.0.0">
+                    <modelVersion>4.0.0</modelVersion>
+                    <groupId>com.example</groupId>
+                    <artifactId>root</artifactId>
+                    <version>1.0.0</version>
+                    <dependencies>
+                        <dependency>
+                            <groupId>com.example</groupId>
+                            <artifactId>application-library</artifactId>
+                            <version>1.0.0</version>
+                        </dependency>
+                    </dependencies>
+                </project>
+                """);
+
+        createStep(List.of("commons-io:commons-io"), Map.of("commons-io:commons-io", "2.99.0")).execute();
+
+        Document document = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(rootPom.toFile());
+        Node rootDependencyManagement = findRootDependencyManagement(document);
+        assertTrue(rootDependencyManagement.getTextContent().contains("commons-io"));
+        assertTrue(Files.readString(rootPom).contains("<artifactId>application-library</artifactId>"));
+    }
+
+    @Test
+    void addsRootDependencyManagementWhenOnlyProfileDependencyManagementExists() throws Exception {
+        Path rootPom = tempDir.resolve("pom.xml");
+        Files.writeString(rootPom, """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <project xmlns="http://maven.apache.org/POM/4.0.0">
+                    <modelVersion>4.0.0</modelVersion>
+                    <groupId>com.example</groupId>
+                    <artifactId>root</artifactId>
+                    <version>1.0.0</version>
+                    <profiles>
+                        <profile>
+                            <id>example</id>
+                            <dependencyManagement>
+                                <dependencies>
+                                    <dependency>
+                                        <groupId>commons-io</groupId>
+                                        <artifactId>commons-io</artifactId>
+                                        <version>2.17.0</version>
+                                    </dependency>
+                                </dependencies>
+                            </dependencyManagement>
+                        </profile>
+                    </profiles>
+                </project>
+                """);
+
+        createStep(List.of("commons-io:commons-io"), Map.of("commons-io:commons-io", "2.99.0")).execute();
+
+        Document document = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(rootPom.toFile());
+        assertEquals(2, document.getElementsByTagName("dependencyManagement").getLength());
+        assertTrue(findRootDependencyManagement(document).getTextContent().contains("2.99.0"));
+        assertTrue(Files.readString(rootPom).contains("<version>2.17.0</version>"));
+    }
+
+    private Node findRootDependencyManagement(Document document) {
+        NodeList dependencyManagementElements = document.getElementsByTagName("dependencyManagement");
+        for (int i = 0; i < dependencyManagementElements.getLength(); i++) {
+            Node dependencyManagement = dependencyManagementElements.item(i);
+            if (dependencyManagement.getParentNode() == document.getDocumentElement()) {
+                return dependencyManagement;
+            }
+        }
+        throw new AssertionError("No root dependencyManagement element found");
     }
 
     private EnsureProjectDependencyManagement createStep(List<String> dependenciesToManage,
