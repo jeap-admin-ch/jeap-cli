@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.5] - 2026-08-17
+
+### Fixed
+
+- Insert project-level dependency management at the root POM level when plugin dependencies are present.
+- Preserve an existing jEAP parent version when it is newer than the Spring Boot 4 migration target.
+
+### Changed
+
+- Updated the CLI parent and Spring Boot 4 migration targets to `jeap-spring-boot-parent` 39.0.1 and `jeap-internal-spring-boot-parent` 8.10.0.
+
 ## [1.8.4] - 2026-08-04
 
 ### Fixed

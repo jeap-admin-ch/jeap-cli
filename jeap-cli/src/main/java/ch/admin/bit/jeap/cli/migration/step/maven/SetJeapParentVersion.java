@@ -4,6 +4,7 @@ import ch.admin.bit.jeap.cli.migration.step.Step;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
+import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -30,6 +31,7 @@ class SetJeapParentVersion implements Step {
             "<parent>.*?<artifactId>\\s*([^<]+)\\s*</artifactId>.*?</parent>",
             Pattern.DOTALL
     );
+    private static final Pattern NUMERIC_VERSION_PREFIX_PATTERN = Pattern.compile("^(\\d+(?:\\.\\d+)*)(.*)$");
 
     private final Path rootDirectory;
     private final Map<String, String> artifactIdToTargetVersion;
@@ -77,6 +79,11 @@ class SetJeapParentVersion implements Step {
             log.info("Parent version is already {}, nothing to do", targetVersion);
             return;
         }
+        if (hasHigherNumericVersion(currentVersion, targetVersion)) {
+            log.info("Parent version {} is newer than migration target {}, keeping existing version",
+                    currentVersion, targetVersion);
+            return;
+        }
 
         String updated = versionMatcher.replaceFirst(
                 Matcher.quoteReplacement(versionMatcher.group(1) + targetVersion + versionMatcher.group(3)));
@@ -93,5 +100,26 @@ class SetJeapParentVersion implements Step {
         return artifactIdToTargetVersion != null
                 ? artifactIdToTargetVersion.get(artifactId)
                 : defaultTargetVersion;
+    }
+
+    private boolean hasHigherNumericVersion(String currentVersion, String targetVersion) {
+        Matcher currentMatcher = NUMERIC_VERSION_PREFIX_PATTERN.matcher(currentVersion);
+        Matcher targetMatcher = NUMERIC_VERSION_PREFIX_PATTERN.matcher(targetVersion);
+        if (!currentMatcher.matches() || !targetMatcher.matches()) {
+            return false;
+        }
+
+        String[] currentParts = currentMatcher.group(1).split("\\.");
+        String[] targetParts = targetMatcher.group(1).split("\\.");
+        int partCount = Math.max(currentParts.length, targetParts.length);
+        for (int i = 0; i < partCount; i++) {
+            BigInteger currentPart = i < currentParts.length ? new BigInteger(currentParts[i]) : BigInteger.ZERO;
+            BigInteger targetPart = i < targetParts.length ? new BigInteger(targetParts[i]) : BigInteger.ZERO;
+            int comparison = currentPart.compareTo(targetPart);
+            if (comparison != 0) {
+                return comparison > 0;
+            }
+        }
+        return false;
     }
 }
