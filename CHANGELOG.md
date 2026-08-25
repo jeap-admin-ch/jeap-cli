@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.0] - 2026-08-26
+
+### Added
+
+- Added PCS maintenance commands for relation reevaluation, process-data backfill, relation republication and reports.
+- Added canonical YAML and RFC-compatible CSV input with deterministic normalization and local validation.
+
 ## [1.8.5] - 2026-08-17
 
 ### Fixed

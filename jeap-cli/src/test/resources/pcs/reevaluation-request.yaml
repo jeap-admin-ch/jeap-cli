@@ -1,0 +1,4 @@
+process-template-name: assessmentProcess
+processes:
+  - origin-process-id: assessment-4711
+  - origin-process-id: assessment-4712
