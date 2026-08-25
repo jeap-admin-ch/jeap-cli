@@ -408,7 +408,17 @@ if [[ -n "${JEAP_CLI_VERBOSE:-}" ]]; then
     -lc 'echo "[INFO] id=$(id -u):$(id -g)"; echo "[INFO] HOME=${HOME:-<unset>}"; echo "[INFO] MAVEN_USER_HOME=${MAVEN_USER_HOME:-<unset>}"; echo "[INFO] pwd=$(pwd)"; echo "[INFO] Container MAVEN_CONFIG=${MAVEN_CONFIG:-<unset>}"; echo "[INFO] Container MAVEN_OPTS=${MAVEN_OPTS:-<unset>}"; echo "[INFO] --- /home/jeapcli/.m2/settings.xml ---"; if [ -f /home/jeapcli/.m2/settings.xml ]; then cat /home/jeapcli/.m2/settings.xml; else echo "settings.xml not found"; fi; echo "[INFO] --- /home/jeapcli/.m2/repository ---"; ls -lad /home/jeapcli/.m2/repository 2>/dev/null || echo "repository dir not found"; echo "[INFO] --- local recipe presence ---"; ls -la /home/jeapcli/.m2/repository/ch/admin/bit/jeap/openrewrite/recipe/jeap-rewrite-recipes/1.5.3 2>/dev/null || echo "1.5.3 not present in container local repo"; echo "[INFO] --- end debug ---"' >&2
 
   echo "=== Docker Command ===" >&2
-  printf '%q ' "${DOCKER_CMD[@]}" >&2
+  REDACTED_DOCKER_CMD=("${DOCKER_CMD[@]}")
+  for ((i = 0; i < ${#REDACTED_DOCKER_CMD[@]}; i++)); do
+    if [[ "${REDACTED_DOCKER_CMD[$i]}" == "--access-token" ]]; then
+      if ((i + 1 < ${#REDACTED_DOCKER_CMD[@]})); then
+        REDACTED_DOCKER_CMD[$((i + 1))]="[REDACTED]"
+      fi
+    elif [[ "${REDACTED_DOCKER_CMD[$i]}" == --access-token=* ]]; then
+      REDACTED_DOCKER_CMD[$i]="--access-token=[REDACTED]"
+    fi
+  done
+  printf '%q ' "${REDACTED_DOCKER_CMD[@]}" >&2
   echo >&2
   echo "=====================" >&2
 fi

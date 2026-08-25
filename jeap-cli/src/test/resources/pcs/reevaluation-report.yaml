@@ -1,0 +1,9 @@
+job-id: 88dbb65f-9634-4685-bc86-17b72d715d3e
+job-type: relation-reevaluation
+process-template-name: assessmentProcess
+job-state: open
+started: 2026-08-06T08:03:12Z
+processes:
+  - task-id: 019c8c72-6fd1-7f25-a9a1-3b3d51fbb321
+    origin-process-id: assessment-4711
+    state: created

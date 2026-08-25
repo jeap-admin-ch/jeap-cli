@@ -1,0 +1,13 @@
+process-template-name: assessmentProcess
+entries:
+  - origin-process-id: assessment-4711
+    process-data:
+      - key: assessmentArtefactId
+        value: art-456
+        role: FinalVersion
+      - key: assessmentId
+        value: a-123
+  - origin-process-id: assessment-4712
+    process-data:
+      - key: assessmentId
+        value: a-789

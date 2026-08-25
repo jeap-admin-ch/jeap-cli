@@ -53,6 +53,7 @@ JEAP_CLI_NO_HOST_CERTS=1 ./jeap <command>
 | [migrate spring-boot-4](docs/migrate-spring-boot-4.md) | Migrate a jEAP application to Spring Boot 4 |
 | [pas-backfill send](docs/pas-backfill.md)              | Submit a backfill job to the PAS            |
 | [pas-backfill report](docs/pas-backfill.md)            | Read the backfill job report from the PAS   |
+| [pcs maintenance](docs/pcs-maintenance.md)              | Submit PCS maintenance jobs and get reports |
 
 ## Building
 
