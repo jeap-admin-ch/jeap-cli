@@ -55,7 +55,7 @@ class PrepareForSpringBoot4ParentUpgradeTest {
 
         createStep(Map.of()).execute();
 
-        assertTrue(Files.readString(rootPom).contains("<version>39.0.1</version>"));
+        assertTrue(Files.readString(rootPom).contains("<version>40.5.0</version>"));
     }
 
     @Test

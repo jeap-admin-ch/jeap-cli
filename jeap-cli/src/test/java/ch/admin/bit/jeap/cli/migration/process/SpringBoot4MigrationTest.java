@@ -50,7 +50,7 @@ class SpringBoot4MigrationTest {
         Migration migration = new SpringBoot4Migration(fakeExecutor);
         migration.migrate(tempDir);
 
-        assertTrue(Files.readString(pomPath).contains("<version>8.10.0</version>"),
+        assertTrue(Files.readString(pomPath).contains("<version>9.1.0</version>"),
                 "Should update the internal jEAP parent to the latest version");
 
         // Then two Maven commands should have been executed
