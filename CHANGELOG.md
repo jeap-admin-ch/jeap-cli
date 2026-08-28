@@ -10,6 +10,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Changed
 
 - Updated the Spring Boot 4 migration targets to `jeap-spring-boot-parent` 40.5.0 and `jeap-internal-spring-boot-parent` 9.1.0.
+- The migration now updates the jEAP parent to the latest stable release and keeps the pinned target if resolution fails.
 
 ## [1.9.0] - 2026-08-26
 

@@ -5,6 +5,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
@@ -54,6 +56,26 @@ class UpdateJeapParentTest {
 
         assertThrows(IOException.class,
                 () -> new UpdateJeapParent(tempDir, fakeExecutor).execute());
+    }
+
+    @Test
+    void testKeepsCurrentParentOnMavenFailureWhenFallbackIsEnabled() throws Exception {
+        Path pomPath = tempDir.resolve("pom.xml");
+        String baselinePom = "<project><version>9.1.0</version></project>";
+        Files.writeString(pomPath, baselinePom);
+        FakeProcessExecutor fakeExecutor = new FakeProcessExecutor((command, workingDirectory) -> {
+            try {
+                Files.writeString(pomPath, "<project><version>partially-updated</version></project>");
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+            return 1;
+        });
+
+        UpdateJeapParent.latestStableWithFallback(tempDir, fakeExecutor).execute();
+
+        assertEquals(1, fakeExecutor.getExecutionCount());
+        assertEquals(baselinePom, Files.readString(pomPath));
     }
 
     @Test
