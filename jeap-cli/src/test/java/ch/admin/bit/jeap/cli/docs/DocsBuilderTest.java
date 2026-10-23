@@ -97,6 +97,19 @@ class DocsBuilderTest {
     }
 
     @Test
+    void refusesAnOutputFolderInsideTheSourceReachedThroughASymbolicLink() throws IOException {
+        // like /var -> /private/var on macOS: the docs root is a real path, the new output folder is not
+        Path real = Files.createDirectories(tempDir.resolve("real"));
+        write("real/docs/page.md", "# Page\n");
+        Path link = Files.createSymbolicLink(tempDir.resolve("link"), real);
+        DocsSite site = DocsSite.open(link.resolve("docs"), "Docs", null, false);
+
+        assertThatThrownBy(() -> DocsBuilder.build(site, link.resolve("docs/new/site")))
+                .isInstanceOf(DocsException.class)
+                .hasMessageContaining("must not be inside the docs folder");
+    }
+
+    @Test
     void refusesAFileAsOutput() throws IOException {
         Path docs = write("docs/page.md", "# Page\n").getParent();
         Path file = write("output.txt", "x");

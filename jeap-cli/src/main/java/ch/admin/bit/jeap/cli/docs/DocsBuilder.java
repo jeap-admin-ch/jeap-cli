@@ -55,7 +55,7 @@ public final class DocsBuilder {
 
     private static Path validateOutput(Path source, Path output) throws IOException {
         Path target = output.toAbsolutePath().normalize();
-        Path resolvedTarget = Files.exists(target) ? target.toRealPath() : target;
+        Path resolvedTarget = realPath(target);
         if (source.startsWith(resolvedTarget)) {
             throw new DocsException("The output folder " + target + " must not be the docs folder or contain it.");
         }
@@ -66,6 +66,22 @@ public final class DocsBuilder {
             throw new DocsException("The output path " + target + " exists and is not a folder.");
         }
         return target;
+    }
+
+    /**
+     * Returns the real path of a path that may not exist yet: the real path of its nearest existing ancestor with the
+     * rest appended. The docs root is a real path, so symbolic links (e.g. /var to /private/var on macOS) must be
+     * resolved before comparing.
+     */
+    private static Path realPath(Path path) throws IOException {
+        Path existing = path;
+        while (existing != null && !Files.exists(existing)) {
+            existing = existing.getParent();
+        }
+        if (existing == null) {
+            return path;
+        }
+        return existing.toRealPath().resolve(existing.relativize(path)).normalize();
     }
 
     private static void deleteContents(Path folder) throws IOException {
