@@ -34,6 +34,8 @@
     <properties>
         <java.version>25</java.version>
         <spring-shell.version>4.0.3</spring-shell.version>
+        <!-- Override until the jEAP parent manages a Jackson version with the fixes for CVE-2026-89407, CVE-2026-68497 and CVE-2026-91776 -->
+        <jackson-bom.version>3.1.8</jackson-bom.version>
         <maven.javadoc.skip>false</maven.javadoc.skip>
         <maven.compiler.release>25</maven.compiler.release>
     </properties>
