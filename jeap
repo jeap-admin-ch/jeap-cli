@@ -1,57 +1,29 @@
 #!/usr/bin/env bash
+# jEAP CLI launcher: downloads and updates the native jEAP CLI binary, points it to the system Java truststore
+# and runs it. Compatible with bash 3.2 (default bash on macOS).
 set -eo pipefail
 
-IMAGE="${JEAP_CLI_IMAGE:-ghcr.io/jeap-admin-ch/jeap-cli:latest}"
-MARKER_DIR="$HOME/.jeap"
-MARKER_FILE="$MARKER_DIR/.cli-update"  # Update marker file
+REPO_URL="https://github.com/jeap-admin-ch/jeap-cli"
+JEAP_DIR="$HOME/.jeap"
+BIN_DIR="$JEAP_DIR/bin"
+MANAGED_BINARY="$BIN_DIR/jeap-cli"
+VERSION_FILE="$BIN_DIR/.version"
+MARKER_FILE="$JEAP_DIR/.cli-update"  # Update marker file
 CHECK_WINDOW_SEC=$((24*60*60))       # 1 day in seconds
-
-# Persistent host directories for container runtime state.
-# Override via environment variable if a different location is needed.
-JEAP_GH_CONFIG_DIR="${JEAP_GH_CONFIG_DIR:-${GH_CONFIG_DIR:-$HOME/.config/gh}}"
-JEAP_M2_DIR="${JEAP_M2_DIR:-$HOME/.m2}"
-JEAP_GIT_CONFIG_DIR="${JEAP_GIT_CONFIG_DIR:-$HOME/.config/git}"
-
-# Resolve GitHub token for truststore-maven-plugin (clones dazit-certificates.git)
-# Priority:
-# 1) CERTIFICATES_REPO_GIT_TOKEN env
-# 2) GH_TOKEN / GITHUB_TOKEN env
-# 3) gh auth token using mounted GH config dir
-TOKEN_SOURCE=""
-RESOLVED_GH_TOKEN=""
-if [[ -n "${CERTIFICATES_REPO_GIT_TOKEN:-}" ]]; then
-  RESOLVED_GH_TOKEN="${CERTIFICATES_REPO_GIT_TOKEN}"
-  TOKEN_SOURCE="CERTIFICATES_REPO_GIT_TOKEN"
-elif [[ -n "${GH_TOKEN:-}" ]]; then
-  RESOLVED_GH_TOKEN="${GH_TOKEN}"
-  TOKEN_SOURCE="GH_TOKEN"
-elif [[ -n "${GITHUB_TOKEN:-}" ]]; then
-  RESOLVED_GH_TOKEN="${GITHUB_TOKEN}"
-  TOKEN_SOURCE="GITHUB_TOKEN"
-elif command -v gh &>/dev/null; then
-  if GH_TOKEN_FROM_GH=$(gh auth token 2>/dev/null) && [[ -n "$GH_TOKEN_FROM_GH" ]]; then
-    RESOLVED_GH_TOKEN="${GH_TOKEN_FROM_GH}"
-    TOKEN_SOURCE="gh auth token"
-  elif GH_TOKEN_FROM_GH=$(GH_CONFIG_DIR="${JEAP_GH_CONFIG_DIR}" gh auth token 2>/dev/null) && [[ -n "$GH_TOKEN_FROM_GH" ]]; then
-    RESOLVED_GH_TOKEN="${GH_TOKEN_FROM_GH}"
-    TOKEN_SOURCE="gh auth token (GH_CONFIG_DIR=${JEAP_GH_CONFIG_DIR})"
-  fi
-fi
-
-if [[ -n "${RESOLVED_GH_TOKEN}" ]]; then
-  export CERTIFICATES_REPO_GIT_TOKEN="${RESOLVED_GH_TOKEN}"
-  if [[ -n "${JEAP_CLI_VERBOSE:-}" ]]; then
-    echo "[INFO] Using GitHub token source: ${TOKEN_SOURCE}" >&2
-    echo "[INFO] CERTIFICATES_REPO_GIT_TOKEN resolved (length=${#RESOLVED_GH_TOKEN})" >&2
-  fi
-elif [[ -n "${JEAP_CLI_VERBOSE:-}" ]]; then
-  echo "[WARN] No GitHub token available for truststore-maven-plugin." >&2
-  echo "[WARN] Tried: CERTIFICATES_REPO_GIT_TOKEN, GH_TOKEN, GITHUB_TOKEN, and 'gh auth token' from ${JEAP_GH_CONFIG_DIR}" >&2
-fi
 
 die() {
   echo "Error: $*" >&2
   exit 1
+}
+
+warn() {
+  echo "Warning: $*" >&2
+}
+
+verbose() {
+  if [[ -n "${JEAP_CLI_VERBOSE:-}" ]]; then
+    echo "[INFO] $*" >&2
+  fi
 }
 
 # Cross-platform mtime helper for Linux (GNU stat) and macOS (BSD stat)
@@ -71,87 +43,131 @@ get_file_mtime() {
   esac
 }
 
-declare -a DOCKER_TTY_OPTS=()
-declare -a DOCKER_MOUNTS=()
-declare -a DOCKER_USER_OPTS=()
-declare -a DOCKER_ENV_OPTS=()
+detect_platform() {
+  case "$(uname -s)/$(uname -m)" in
+    Linux/x86_64) PLATFORM="linux-x86_64" ;;
+    Darwin/arm64) PLATFORM="macos-aarch64" ;;
+    *) die "Unsupported platform: $(uname -s) $(uname -m). The jEAP CLI supports Linux x86_64 and macOS arm64. On Windows, use WSL with the Linux binary." ;;
+  esac
+}
 
-# Enable a TTY for interactive use and keep stdin open when input is piped.
-if [[ -t 0 && -t 1 ]]; then
-  DOCKER_TTY_OPTS+=("-it")
-elif [[ ! -t 0 ]]; then
-  DOCKER_TTY_OPTS+=("-i")
-fi
+update_check_due() {
+  [[ ! -f "$MARKER_FILE" ]] && return 0
+  local now last
+  now=$(date +%s)
+  last=$(get_file_mtime "$MARKER_FILE") || return 0
+  (( now - last >= CHECK_WINDOW_SEC ))
+}
 
-# 0) Preconditions
-command -v docker >/dev/null 2>&1 || die "docker is not installed or not on PATH"
-mkdir -p "$MARKER_DIR"
+# Resolves the latest release version from the redirect of /releases/latest (no GitHub API rate limit).
+latest_version() {
+  local url version
+  url=$(curl -fsSLI --connect-timeout 10 -o /dev/null -w '%{url_effective}' "$REPO_URL/releases/latest") || return 1
+  case "$url" in
+    */releases/tag/*) version="${url##*/releases/tag/}" ;;
+    *) return 1 ;;
+  esac
+  [[ "$version" =~ ^[A-Za-z0-9._-]+$ ]] || return 1
+  echo "$version"
+}
 
-# Ensure persistent host directories exist before mounting them
-mkdir -p "${JEAP_GH_CONFIG_DIR}" "${JEAP_M2_DIR}"
-
-# Log Maven settings source early for traceability
-if [[ -f "${JEAP_M2_DIR}/settings.xml" ]]; then
-  if [[ -n "${JEAP_CLI_VERBOSE:-}" ]]; then
-    echo "[INFO] Maven settings (host): ${JEAP_M2_DIR}/settings.xml" >&2
-  fi
-else
-  if [[ -n "${JEAP_CLI_VERBOSE:-}" ]]; then
-    echo "[WARN] Maven settings not found at: ${JEAP_M2_DIR}/settings.xml" >&2
-  fi
-fi
-
-# 1) Ensure image exists locally (pull if missing) only if JEAP_CLI_IMAGE is not set
-if [[ -z "${JEAP_CLI_IMAGE:-}" ]]; then
-  if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
-    echo "Docker image not found locally. Pulling $IMAGE ..."
-    docker pull "$IMAGE"
-    touch "$MARKER_FILE"
+verify_checksum() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum -c "$1"
   else
-    # 2) If last pull/refresh is older than 2 days (based on marker), refresh
-    needs_refresh=false
-    if [[ ! -f "$MARKER_FILE" ]]; then
-      needs_refresh=true
-    else
-      now=$(date +%s)
-      last=$(get_file_mtime "$MARKER_FILE")
-      elapsed=$((now - last))
-      if (( elapsed >= CHECK_WINDOW_SEC )); then
-        needs_refresh=true
-      fi
-    fi
+    shasum -a 256 -c "$1"
+  fi
+}
 
-    if $needs_refresh; then
-      docker pull "$IMAGE"
-      touch "$MARKER_FILE"
+# Downloads the binary of the given release into the managed location. Returns non-zero on failure.
+download_binary() {
+  local version="$1"
+  local asset="jeap-cli-$PLATFORM"
+  local url="$REPO_URL/releases/download/$version/$asset"
+  local tmp_dir status
+
+  mkdir -p "$BIN_DIR" && tmp_dir=$(mktemp -d "$BIN_DIR/.download.XXXXXX") || return 1
+  echo "Downloading jEAP CLI $version for $PLATFORM ..." >&2
+  status=$(curl -sSL --connect-timeout 10 -o "$tmp_dir/$asset" -w '%{http_code}' "$url") || status="failed"
+  if [[ "$status" == "200" ]]; then
+    status=$(curl -sSL --connect-timeout 10 -o "$tmp_dir/$asset.sha256" -w '%{http_code}' "$url.sha256") || status="failed"
+  fi
+  if [[ "$status" == "404" ]]; then
+    warn "Release $version has no jEAP CLI binary for $PLATFORM. Native binaries are published from version 2.0.0 on."
+  elif [[ "$status" != "200" ]]; then
+    warn "Download of $url failed (status: $status)."
+  elif ! (cd "$tmp_dir" && verify_checksum "$asset.sha256") >/dev/null 2>&1; then
+    warn "Checksum verification of the jEAP CLI $version download failed."
+  elif chmod +x "$tmp_dir/$asset" && mv -f "$tmp_dir/$asset" "$MANAGED_BINARY" && echo "$version" > "$VERSION_FILE"; then
+    rm -rf "$tmp_dir"
+    return 0
+  fi
+  rm -rf "$tmp_dir"
+  return 1
+}
+
+# Ensures the managed binary is installed and up to date, sets VERSION.
+ensure_managed_binary() {
+  local wanted="" checked=false
+  detect_platform
+  VERSION=$(cat "$VERSION_FILE" 2>/dev/null || true)
+  [[ -x "$MANAGED_BINARY" ]] || VERSION=""
+
+  if [[ -n "${JEAP_CLI_VERSION:-}" ]]; then
+    wanted="$JEAP_CLI_VERSION"
+  elif [[ -z "$VERSION" ]] || update_check_due; then
+    if wanted=$(latest_version); then
+      checked=true
+    elif [[ -n "$VERSION" ]]; then
+      warn "Could not check for a new jEAP CLI release. Continuing with the installed version $VERSION."
+    else
+      die "Could not determine the latest jEAP CLI release from $REPO_URL/releases/latest. Check your network and proxy settings."
     fi
   fi
-fi
 
-# 3) Start the CLI with default entrypoint, mounting current dir to /workspace
-WORKDIR="$(pwd)"
-DOCKER_MOUNTS=("-v" "$WORKDIR:/workspace:rw")
+  if [[ -n "$wanted" && "$wanted" != "$VERSION" ]]; then
+    if download_binary "$wanted"; then
+      VERSION="$wanted"
+    elif [[ -n "$VERSION" ]]; then
+      warn "Continuing with the installed jEAP CLI $VERSION."
+      checked=false
+    else
+      die "The jEAP CLI binary could not be installed."
+    fi
+  fi
 
-# Mount maven config and local repository (persistent across runs)
-DOCKER_MOUNTS+=("-v" "${JEAP_M2_DIR}:/home/jeapcli/.m2:rw")
+  if $checked; then
+    touch "$MARKER_FILE"
+  fi
+}
 
-# Explicitly mount Maven settings files (if present) so Maven always sees
-# the same effective configuration as on the host.
-if [[ -f "${JEAP_M2_DIR}/settings.xml" ]]; then
-  DOCKER_MOUNTS+=("-v" "${JEAP_M2_DIR}/settings.xml:/home/jeapcli/.m2/settings.xml:ro")
-fi
-if [[ -f "${JEAP_M2_DIR}/settings-security.xml" ]]; then
-  DOCKER_MOUNTS+=("-v" "${JEAP_M2_DIR}/settings-security.xml:/home/jeapcli/.m2/settings-security.xml:ro")
-fi
-if [[ -f "${JEAP_M2_DIR}/toolchains.xml" ]]; then
-  DOCKER_MOUNTS+=("-v" "${JEAP_M2_DIR}/toolchains.xml:/home/jeapcli/.m2/toolchains.xml:ro")
-fi
-
-# Mount GH config for persistent Copilot CLI / gh auth credentials.
-# Use a dedicated path to avoid conflicts with tools that create sibling dirs
-# under /home/jeapcli/.config (e.g. JGit -> /home/jeapcli/.config/jgit).
-DOCKER_MOUNTS+=("-v" "${JEAP_GH_CONFIG_DIR}:/home/jeapcli/gh-config:rw")
-DOCKER_ENV_OPTS+=("-e" "GH_CONFIG_DIR=/home/jeapcli/gh-config")
+# Selects the truststore passed to the binary. A native image does not read the OS trust store by itself.
+# Never pass trustStoreType/Provider/Password: without a readable trustStore file the binary fails with them.
+resolve_truststore() {
+  TRUSTSTORE=""
+  if [[ -n "${JEAP_CLI_TRUSTSTORE:-}" ]]; then
+    [[ -f "$JEAP_CLI_TRUSTSTORE" && -r "$JEAP_CLI_TRUSTSTORE" ]] || die "JEAP_CLI_TRUSTSTORE is not a readable file: $JEAP_CLI_TRUSTSTORE"
+    TRUSTSTORE="$JEAP_CLI_TRUSTSTORE"
+    return
+  fi
+  local candidates=(/etc/ssl/certs/java/cacerts /etc/pki/ca-trust/extracted/java/cacerts)
+  local candidate mac_java_home
+  if [[ -n "${JAVA_HOME:-}" ]]; then
+    candidates+=("$JAVA_HOME/lib/security/cacerts")
+  fi
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    mac_java_home=$(/usr/libexec/java_home 2>/dev/null || true)
+    if [[ -n "$mac_java_home" ]]; then
+      candidates+=("$mac_java_home/lib/security/cacerts")
+    fi
+  fi
+  for candidate in "${candidates[@]}"; do
+    if [[ -f "$candidate" && -r "$candidate" ]]; then
+      TRUSTSTORE="$candidate"
+      return
+    fi
+  done
+}
 
 # Auto-refresh AWS CodeArtifact npm token if expired
 refresh_codeartifact_npm_token() {
@@ -170,6 +186,7 @@ refresh_codeartifact_npm_token() {
   domain_dash_owner=$(echo "$host" | cut -d. -f1)
   region=$(echo "$host" | grep -oP '\.d\.codeartifact\.\K[^.]+(?=\.amazonaws\.com)' || true)
   owner=$(echo "$domain_dash_owner" | grep -oP '\d+$' || true)
+  # shellcheck disable=SC2001
   domain=$(echo "$domain_dash_owner" | sed "s/-${owner}$//")
 
   [[ -n "$domain" && -n "$owner" && -n "$region" && -n "$repo" ]] || return 0
@@ -211,243 +228,48 @@ except Exception:
     fi
   fi
 }
-refresh_codeartifact_npm_token
 
-# Mount npm config and caches
-if [[ -f "$HOME/.npmrc" ]]; then
-  DOCKER_MOUNTS+=("-v" "$HOME/.npmrc:/home/jeapcli/.npmrc")
-fi
-if [[ -d "$HOME/.npm" ]]; then
-  DOCKER_MOUNTS+=("-v" "$HOME/.npm:/home/jeapcli/.npm:rw")
-fi
-if [[ -d "$HOME/.config/npm" ]]; then
-  DOCKER_MOUNTS+=("-v" "$HOME/.config/npm:/home/jeapcli/.config/npm:rw")
-fi
-
-# Mount host git config so git/JGit inside the container uses the same proxy/auth setup
-if [[ -f "$HOME/.gitconfig" ]]; then
-  DOCKER_MOUNTS+=("-v" "$HOME/.gitconfig:/home/jeapcli/.gitconfig:ro")
-fi
-if [[ -f "$HOME/.git-credentials" ]]; then
-  DOCKER_MOUNTS+=("-v" "$HOME/.git-credentials:/home/jeapcli/.git-credentials:ro")
-fi
-if [[ -f "$HOME/.gitconfig.local" ]]; then
-  DOCKER_MOUNTS+=("-v" "$HOME/.gitconfig.local:/home/jeapcli/.gitconfig.local:ro")
-fi
-if [[ -f "$HOME/.gitignore_global" ]]; then
-  DOCKER_MOUNTS+=("-v" "$HOME/.gitignore_global:/home/jeapcli/.gitignore_global:ro")
-fi
-if [[ -d "${JEAP_GIT_CONFIG_DIR}" ]]; then
-  DOCKER_MOUNTS+=("-v" "${JEAP_GIT_CONFIG_DIR}:/home/jeapcli/.config/git:ro")
-fi
-
-# Mount SSH configuration so git+ssh works like on the host.
-if [[ -d "$HOME/.ssh" ]]; then
-  DOCKER_MOUNTS+=("-v" "$HOME/.ssh:/home/jeapcli/.ssh:ro")
-fi
-
-# Mount cacerts if available
-if [[ -f "/etc/ssl/certs/java/cacerts" ]]; then
-  DOCKER_MOUNTS+=("-v" "/etc/ssl/certs/java/cacerts:/opt/java/openjdk/lib/security/cacerts")
-elif [[ -n "${JAVA_HOME:-}" && -f "$JAVA_HOME/lib/security/cacerts" ]]; then
-  DOCKER_MOUNTS+=("-v" "$JAVA_HOME/lib/security/cacerts:/opt/java/openjdk/lib/security/cacerts")
-fi
-
-# Mount system CA certificates for corporate proxy support (disable with JEAP_CLI_NO_HOST_CERTS=1)
-if [[ -z "${JEAP_CLI_NO_HOST_CERTS:-}" ]]; then
-  if [[ -f "/etc/ssl/certs/ca-certificates.crt" ]]; then
-    DOCKER_MOUNTS+=("-v" "/etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro")
-  fi
-  if [[ -d "/etc/ssl/certs" ]]; then
-    DOCKER_MOUNTS+=("-v" "/etc/ssl/certs:/etc/ssl/certs:ro")
-  fi
-fi
-
-
-# Mount Docker socket for Testcontainers support
-if [[ -S "/var/run/docker.sock" ]]; then
-  DOCKER_MOUNTS+=("-v" "/var/run/docker.sock:/var/run/docker.sock")
-fi
-
-# Pass user UID/GID to be able to write to workspace files
-MY_UID=$(id -u)
-MY_GID=$(id -g)
-DOCKER_USER_OPTS=(--user "${MY_UID}:${MY_GID}")
-DOCKER_ENV_OPTS+=("-e" "HOME=/home/jeapcli")
-DOCKER_ENV_OPTS+=("-e" "MAVEN_USER_HOME=/home/jeapcli/.m2")
-
-# Pass proxy environment variables and GitHub token if set
-for VAR in HTTP_PROXY HTTPS_PROXY NO_PROXY http_proxy https_proxy no_proxy CERTIFICATES_REPO_GIT_TOKEN GIT_AUTHOR_NAME GIT_AUTHOR_EMAIL GIT_COMMITTER_NAME GIT_COMMITTER_EMAIL GIT_SSH_COMMAND SSH_AUTH_SOCK; do
-  if [[ -n "${!VAR:-}" ]]; then
-    DOCKER_ENV_OPTS+=("-e" "$VAR=${!VAR}")
-  fi
-done
-
-# Forward SSH agent when available.
-if [[ -n "${SSH_AUTH_SOCK:-}" && -S "${SSH_AUTH_SOCK}" ]]; then
-  DOCKER_MOUNTS+=("-v" "${SSH_AUTH_SOCK}:/ssh-agent")
-  DOCKER_ENV_OPTS+=("-e" "SSH_AUTH_SOCK=/ssh-agent")
-fi
-
-# Ensure git-based clone operations (e.g. truststore plugin calling system git)
-# consistently use the configured proxy without forcing global Maven/JVM proxy flags.
-PROXY_URL="${https_proxy:-${HTTPS_PROXY:-${http_proxy:-${HTTP_PROXY:-}}}}"
-if [[ -n "$PROXY_URL" ]]; then
-  DOCKER_ENV_OPTS+=("-e" "GIT_CONFIG_COUNT=2")
-  DOCKER_ENV_OPTS+=("-e" "GIT_CONFIG_KEY_0=http.proxy")
-  DOCKER_ENV_OPTS+=("-e" "GIT_CONFIG_VALUE_0=${PROXY_URL}")
-  DOCKER_ENV_OPTS+=("-e" "GIT_CONFIG_KEY_1=https.proxy")
-  DOCKER_ENV_OPTS+=("-e" "GIT_CONFIG_VALUE_1=${PROXY_URL}")
-  if [[ -n "${JEAP_CLI_VERBOSE:-}" ]]; then
-    echo "[INFO] Applied git proxy settings via GIT_CONFIG_* (${PROXY_URL})" >&2
-  fi
-fi
-
-# Enforce Maven user settings from mounted ~/.m2/settings.xml in container.
-# This keeps repository/mirror/proxy config aligned with local machine behavior.
-MAVEN_SETTINGS_IN_CONTAINER="/home/jeapcli/.m2/settings.xml"
-MAVEN_REPO_LOCAL_IN_CONTAINER="/home/jeapcli/.m2/repository"
-if [[ -f "${JEAP_M2_DIR}/settings.xml" ]]; then
-  if [[ -n "${MAVEN_CONFIG:-}" ]]; then
-    DOCKER_ENV_OPTS+=("-e" "MAVEN_CONFIG=--settings ${MAVEN_SETTINGS_IN_CONTAINER} ${MAVEN_CONFIG}")
-    EFFECTIVE_MAVEN_CONFIG="--settings ${MAVEN_SETTINGS_IN_CONTAINER} ${MAVEN_CONFIG}"
-  else
-    DOCKER_ENV_OPTS+=("-e" "MAVEN_CONFIG=--settings ${MAVEN_SETTINGS_IN_CONTAINER}")
-    EFFECTIVE_MAVEN_CONFIG="--settings ${MAVEN_SETTINGS_IN_CONTAINER}"
-  fi
-  if [[ -n "${JEAP_CLI_VERBOSE:-}" ]]; then
-    echo "[INFO] Maven settings (container): ${MAVEN_SETTINGS_IN_CONTAINER}" >&2
-  fi
-elif [[ -n "${MAVEN_CONFIG:-}" ]]; then
-  DOCKER_ENV_OPTS+=("-e" "MAVEN_CONFIG=${MAVEN_CONFIG}")
-  EFFECTIVE_MAVEN_CONFIG="${MAVEN_CONFIG}"
-fi
-
-# Pass canonical JEAP_MAVEN_SETTINGS so subprocesses can enforce it too.
-DOCKER_ENV_OPTS+=("-e" "JEAP_MAVEN_SETTINGS=${MAVEN_SETTINGS_IN_CONTAINER}")
-DOCKER_ENV_OPTS+=("-e" "JEAP_MAVEN_REPO_LOCAL=${MAVEN_REPO_LOCAL_IN_CONTAINER}")
-
-# Pass MAVEN_OPTS unchanged from user env and also as canonical JEAP_MAVEN_OPTS.
-if [[ -n "${MAVEN_OPTS:-}" && -n "${MAVEN_OPTS//[[:space:]]/}" ]]; then
-  NORMALIZED_MAVEN_OPTS=$(HOST_HOME="${HOME}" RAW_MAVEN_OPTS="${MAVEN_OPTS}" python3 - <<'PY' 2>/dev/null || echo "${MAVEN_OPTS}"
-import os
-raw = os.environ.get("RAW_MAVEN_OPTS", "")
-host_home = os.environ.get("HOST_HOME", "")
-container_home = "/home/jeapcli"
-normalized = raw
-if host_home:
-    normalized = normalized.replace(f"{host_home}/.m2", f"{container_home}/.m2")
-    normalized = normalized.replace(f"{host_home}/.config", f"{container_home}/.config")
-    normalized = normalized.replace(host_home, container_home)
-print(normalized)
-PY
-)
-  # Remove any host-incompatible maven.repo.local override; container uses mounted ~/.m2 repository.
-  NORMALIZED_MAVEN_OPTS=$(echo "${NORMALIZED_MAVEN_OPTS}" | sed -E 's@(^|[[:space:]])-Dmaven\.repo\.local=[^[:space:]]+@@g' | xargs)
-  DOCKER_ENV_OPTS+=("-e" "MAVEN_OPTS=${NORMALIZED_MAVEN_OPTS}")
-  DOCKER_ENV_OPTS+=("-e" "JEAP_MAVEN_OPTS=${NORMALIZED_MAVEN_OPTS}")
-  EFFECTIVE_MAVEN_OPTS="${NORMALIZED_MAVEN_OPTS}"
-  if [[ -n "${JEAP_CLI_VERBOSE:-}" ]]; then
-    echo "[INFO] Raw MAVEN_OPTS (host): ${MAVEN_OPTS}" >&2
-    echo "[INFO] Normalized MAVEN_OPTS (container): ${NORMALIZED_MAVEN_OPTS}" >&2
-    echo "[INFO] Using MAVEN_OPTS from user environment." >&2
-  fi
-else
-  DOCKER_ENV_OPTS+=("-e" "JEAP_MAVEN_OPTS=")
-  EFFECTIVE_MAVEN_OPTS=""
-  if [[ -n "${JEAP_CLI_VERBOSE:-}" ]]; then
-    echo "[INFO] MAVEN_OPTS from user environment is empty/unset; not passing MAVEN_OPTS." >&2
-  fi
-fi
-
-# Mitigate resolver local-repo tracking conflicts ("present but unavailable" artifacts)
-# by using a dedicated tracking filename for JEAP CLI Maven runs.
-if [[ -n "${EFFECTIVE_MAVEN_OPTS:-}" ]]; then
-  if [[ "${EFFECTIVE_MAVEN_OPTS}" != *"aether.enhancedLocalRepository.trackingFilename="* ]]; then
-    EFFECTIVE_MAVEN_OPTS="${EFFECTIVE_MAVEN_OPTS} -Daether.enhancedLocalRepository.trackingFilename=jeap-local.tracking"
-  fi
-else
-  EFFECTIVE_MAVEN_OPTS="-Daether.enhancedLocalRepository.trackingFilename=jeap-local.tracking"
-fi
-DOCKER_ENV_OPTS+=("-e" "MAVEN_OPTS=${EFFECTIVE_MAVEN_OPTS}")
-DOCKER_ENV_OPTS+=("-e" "JEAP_MAVEN_OPTS=${EFFECTIVE_MAVEN_OPTS}")
-if [[ -n "${JEAP_CLI_VERBOSE:-}" ]]; then
-  echo "[INFO] Enabled Maven local-repo tracking override: jeap-local.tracking" >&2
-fi
-
-# Pass MVNW_VERBOSE to container when verbose mode is enabled
-if [[ -n "${JEAP_CLI_VERBOSE:-}" ]]; then
-  DOCKER_ENV_OPTS+=("-e" "MVNW_VERBOSE=true")
-fi
-
-# Build the complete docker command
-DOCKER_CMD=(
-  docker run --rm
-  "${DOCKER_TTY_OPTS[@]}"
-  "${DOCKER_USER_OPTS[@]}"
-  "${DOCKER_MOUNTS[@]}"
-  "${DOCKER_ENV_OPTS[@]}"
-  -w /workspace
-  "$IMAGE"
-  "$@"
-)
-
-# Verbose mode: log the docker command if JEAP_CLI_VERBOSE is set
-if [[ -n "${JEAP_CLI_VERBOSE:-}" ]]; then
-  echo "[INFO] Effective MAVEN_CONFIG: ${EFFECTIVE_MAVEN_CONFIG:-<unset>}" >&2
-  echo "[INFO] Effective MAVEN_OPTS: ${EFFECTIVE_MAVEN_OPTS:-<unset>}" >&2
-
-  # Preflight: show Maven settings and runtime env values inside container
-  docker run --rm \
-    "${DOCKER_USER_OPTS[@]}" \
-    "${DOCKER_MOUNTS[@]}" \
-    "${DOCKER_ENV_OPTS[@]}" \
-    -w /workspace \
-    --entrypoint sh \
-    "$IMAGE" \
-    -lc 'echo "[INFO] id=$(id -u):$(id -g)"; echo "[INFO] HOME=${HOME:-<unset>}"; echo "[INFO] MAVEN_USER_HOME=${MAVEN_USER_HOME:-<unset>}"; echo "[INFO] pwd=$(pwd)"; echo "[INFO] Container MAVEN_CONFIG=${MAVEN_CONFIG:-<unset>}"; echo "[INFO] Container MAVEN_OPTS=${MAVEN_OPTS:-<unset>}"; echo "[INFO] --- /home/jeapcli/.m2/settings.xml ---"; if [ -f /home/jeapcli/.m2/settings.xml ]; then cat /home/jeapcli/.m2/settings.xml; else echo "settings.xml not found"; fi; echo "[INFO] --- /home/jeapcli/.m2/repository ---"; ls -lad /home/jeapcli/.m2/repository 2>/dev/null || echo "repository dir not found"; echo "[INFO] --- local recipe presence ---"; ls -la /home/jeapcli/.m2/repository/ch/admin/bit/jeap/openrewrite/recipe/jeap-rewrite-recipes/1.5.3 2>/dev/null || echo "1.5.3 not present in container local repo"; echo "[INFO] --- end debug ---"' >&2
-
-  echo "=== Docker Command ===" >&2
-  REDACTED_DOCKER_CMD=("${DOCKER_CMD[@]}")
-  for ((i = 0; i < ${#REDACTED_DOCKER_CMD[@]}; i++)); do
-    if [[ "${REDACTED_DOCKER_CMD[$i]}" == "--access-token" ]]; then
-      if ((i + 1 < ${#REDACTED_DOCKER_CMD[@]})); then
-        REDACTED_DOCKER_CMD[$((i + 1))]="[REDACTED]"
-      fi
-    elif [[ "${REDACTED_DOCKER_CMD[$i]}" == --access-token=* ]]; then
-      REDACTED_DOCKER_CMD[$i]="--access-token=[REDACTED]"
+# Formats the command line for logging with access tokens redacted
+format_command() {
+  local arg redact_next=false
+  for arg in "$@"; do
+    if $redact_next; then
+      printf '[REDACTED] '
+      redact_next=false
+    elif [[ "$arg" == --access-token=* ]]; then
+      printf -- '--access-token=[REDACTED] '
+    else
+      [[ "$arg" == "--access-token" ]] && redact_next=true
+      printf '%q ' "$arg"
     fi
   done
-  printf '%q ' "${REDACTED_DOCKER_CMD[@]}" >&2
-  echo >&2
-  echo "=====================" >&2
+}
+
+mkdir -p "$JEAP_DIR"
+
+if [[ -n "${JEAP_CLI_BINARY:-}" ]]; then
+  [[ -f "$JEAP_CLI_BINARY" && -x "$JEAP_CLI_BINARY" ]] || die "JEAP_CLI_BINARY is not an executable file: $JEAP_CLI_BINARY"
+  BINARY="$JEAP_CLI_BINARY"
+  PLATFORM="n/a"
+  VERSION="local binary"
+else
+  ensure_managed_binary
+  BINARY="$MANAGED_BINARY"
 fi
 
-# Capture command to check if final verification is needed
-CLI_CMD="$1"
-
-"${DOCKER_CMD[@]}"
-
-# If the command was 'migrate', run final verification (mvnw install) on the host.
-# This ensures that Testcontainers (which require Docker access) work correctly,
-# as they will use the host's Docker environment.
-if [[ "$CLI_CMD" == "migrate" ]]; then
-  echo "[INFO] Migration steps completed. Running final verification (mvnw install) on the host..." >&2
-  
-  MVNW="./mvnw"
-  if [[ ! -x "$MVNW" ]]; then
-    if command -v mvn >/dev/null 2>&1; then
-      MVNW="mvn"
-    else
-      echo "[WARN] Neither ./mvnw nor mvn found on host. Skipping final verification." >&2
-      exit 0
-    fi
-  fi
-  
-  # Use the same MAVEN_OPTS and MAVEN_CONFIG if possible, but be careful with container-specific paths.
-  # For now, just run a standard install.
-  if ! "$MVNW" install; then
-    die "Final verification (mvnw install) failed."
-  fi
-  echo "[INFO] Final verification successful." >&2
+resolve_truststore
+JAVA_OPTS_ARGS=()
+if [[ -n "$TRUSTSTORE" ]]; then
+  JAVA_OPTS_ARGS+=("-Djavax.net.ssl.trustStore=$TRUSTSTORE")
 fi
+
+refresh_codeartifact_npm_token
+
+if [[ -n "${JEAP_CLI_VERBOSE:-}" ]]; then
+  verbose "Platform: $PLATFORM"
+  verbose "Binary: $BINARY ($VERSION)"
+  verbose "Truststore: ${TRUSTSTORE:-<embedded>}"
+  verbose "Command: $(format_command "$BINARY" ${JAVA_OPTS_ARGS[@]+"${JAVA_OPTS_ARGS[@]}"} "$@")"
+fi
+
+exec "$BINARY" ${JAVA_OPTS_ARGS[@]+"${JAVA_OPTS_ARGS[@]}"} "$@"
