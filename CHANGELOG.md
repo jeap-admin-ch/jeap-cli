@@ -17,6 +17,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Container image, `JEAP_CLI_IMAGE`, `JEAP_CLI_NO_HOST_CERTS` and the container mount variables.
 
+### Security
+
+- Updated Jackson to 3.1.8 to fix CVE-2026-89407, CVE-2026-68497 and CVE-2026-91776.
+
 ## [1.10.1] - 2026-08-31
 
 ### Fixed
