@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="preview-assets" content="{{assets}}">
+<title>{{pageTitle}} · {{siteTitle}}</title>
+<link rel="stylesheet" href="{{assets}}preview.css">
+<script type="module" src="{{assets}}preview.js"></script>
+{{reloadScript}}
+</head>
+<body>
+<header class="topbar">
+  <button class="nav-toggle" type="button" aria-label="Toggle navigation" onclick="document.body.classList.toggle('nav-open')">☰</button>
+  <a class="site-title" href="{{home}}">{{siteTitle}}</a>
+  {{banner}}
+</header>
+<div class="layout">
+  <nav class="sidebar">{{navigation}}</nav>
+  <main class="content"><article>
+{{content}}
+  </article></main>
+</div>
+</body>
+</html>

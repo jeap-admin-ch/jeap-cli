@@ -18,6 +18,11 @@
 
 	<properties>
         <start-class>ch.admin.bit.jeap.cli.JeapCLI</start-class>
+        <commonmark.version>0.28.0</commonmark.version>
+        <frontend-maven-plugin.version>2.0.2</frontend-maven-plugin.version>
+        <!-- Node.js is only used at build time to fetch the JavaScript libraries bundled for the docs preview -->
+        <docs-preview.node.version>v24.22.1</docs-preview.node.version>
+        <docs-preview.npm.directory>${project.build.directory}/docs-preview-npm</docs-preview.npm.directory>
 	</properties>
 
 	<dependencies>
@@ -37,6 +42,36 @@
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-csv</artifactId>
             <version>1.10.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.commonmark</groupId>
+            <artifactId>commonmark</artifactId>
+            <version>${commonmark.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.commonmark</groupId>
+            <artifactId>commonmark-ext-gfm-tables</artifactId>
+            <version>${commonmark.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.commonmark</groupId>
+            <artifactId>commonmark-ext-gfm-strikethrough</artifactId>
+            <version>${commonmark.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.commonmark</groupId>
+            <artifactId>commonmark-ext-autolink</artifactId>
+            <version>${commonmark.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.commonmark</groupId>
+            <artifactId>commonmark-ext-yaml-front-matter</artifactId>
+            <version>${commonmark.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.commonmark</groupId>
+            <artifactId>commonmark-ext-heading-anchor</artifactId>
+            <version>${commonmark.version}</version>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -69,6 +104,94 @@
 
 	<build>
 		<plugins>
+            <!-- Docs preview: install the bundled JavaScript libraries with npm (Node.js inside target/ only)
+                 and copy the files the preview serves to the class path under docs-preview/vendor -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>copy-docs-preview-npm-project</id>
+                        <phase>initialize</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${docs-preview.npm.directory}</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>src/main/docs-preview</directory>
+                                    <includes>
+                                        <include>package.json</include>
+                                        <include>package-lock.json</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>copy-docs-preview-vendor-files</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.outputDirectory}/docs-preview/vendor</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${docs-preview.npm.directory}/node_modules/mermaid/dist</directory>
+                                    <includes>
+                                        <include>mermaid.min.js</include>
+                                    </includes>
+                                </resource>
+                                <resource>
+                                    <directory>${docs-preview.npm.directory}/node_modules/@plantuml/core</directory>
+                                    <includes>
+                                        <include>plantuml.js</include>
+                                        <include>viz-global.js</include>
+                                        <include>themes.js</include>
+                                    </includes>
+                                </resource>
+                                <resource>
+                                    <directory>${docs-preview.npm.directory}/node_modules/dompurify/dist</directory>
+                                    <includes>
+                                        <include>purify.min.js</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>com.github.eirslett</groupId>
+                <artifactId>frontend-maven-plugin</artifactId>
+                <version>${frontend-maven-plugin.version}</version>
+                <configuration>
+                    <installDirectory>${project.build.directory}/node</installDirectory>
+                    <workingDirectory>${docs-preview.npm.directory}</workingDirectory>
+                    <nodeVersion>${docs-preview.node.version}</nodeVersion>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>install-node-and-npm</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>install-node-and-npm</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>npm-ci</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <configuration>
+                            <arguments>ci --ignore-scripts --no-audit --no-fund</arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -164,6 +287,7 @@
                                     <buildArg>-H:+UnlockExperimentalVMOptions</buildArg>
                                     <buildArg>-H:+ReportExceptionStackTraces</buildArg>
                                     <buildArg>-H:IncludeResources=banner/.*</buildArg>
+                                    <buildArg>-H:IncludeResources=docs-preview/.*</buildArg>
                                     <buildArg>-H:Log=registerResource</buildArg>
                                     <buildArg>-march=compatibility</buildArg>
                                     <buildArg>--enable-native-access=ALL-UNNAMED</buildArg>
