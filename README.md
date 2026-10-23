@@ -76,6 +76,8 @@ into the JDK truststore or point `JEAP_CLI_TRUSTSTORE` to a truststore that cont
 | [pas-backfill send](docs/pas-backfill.md)              | Submit a backfill job to the PAS            |
 | [pas-backfill report](docs/pas-backfill.md)            | Read the backfill job report from the PAS   |
 | [pcs maintenance](docs/pcs-maintenance.md)              | Submit PCS maintenance jobs and get reports |
+| [docs preview](docs/docs-preview.md)                   | Preview the Markdown docs in the browser    |
+| [docs build](docs/docs-preview.md#build-a-static-site) | Write the Markdown docs as a static site    |
 
 ## Building
 

@@ -56,6 +56,14 @@ details.
 **Process Execution**: `ProcessExecutor` interface with `SystemProcessExecutor` implementation for running external
 commands (Maven, etc.).
 
+**Docs Preview**: `docs/` package behind `commands/DocsCommands` (`docs preview`, `docs build`). `DocsSite` renders
+Markdown with commonmark-java (`MarkdownRenderer`, `DiagramNodeRenderer` for diagram placeholders),
+`DocsPreviewServer` serves it on 127.0.0.1 with auto reload, `DocsBuilder` writes a static site. Page template, CSS
+and scripts live in `src/main/resources/docs-preview/`. The JavaScript libraries (mermaid, @plantuml/core, DOMPurify)
+are pinned in `src/main/docs-preview/package.json`; the Maven build installs them with npm (Node.js only inside
+`target/`) and copies them to `docs-preview/vendor/` on the class path. When changing them, update
+`package-lock.json` and `src/main/docs-preview/THIRD-PARTY-LICENSES.md`.
+
 ### Adding New Migrations
 
 1. Create step classes in appropriate `migration/step/` subdirectory
