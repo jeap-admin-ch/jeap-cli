@@ -7,7 +7,7 @@ putting the token into the shell history.
 ## Submit a Backfill Job
 
 ```bash
-echo "$PAS_ACCESS_TOKEN" | ./jeap pas-backfill send \
+echo "$PAS_ACCESS_TOKEN" | jeap pas-backfill send \
   --file=backfill-job.yaml \
   --job-id=88dbb65f-9634-4685-bc86-17b72d715d3e \
   --url=https://pas.example.com/process-archive-service
@@ -16,7 +16,7 @@ echo "$PAS_ACCESS_TOKEN" | ./jeap pas-backfill send \
 To keep large reference lists outside the YAML file, provide metadata in the YAML and load references from a CSV file:
 
 ```bash
-echo "$PAS_ACCESS_TOKEN" | ./jeap pas-backfill send \
+echo "$PAS_ACCESS_TOKEN" | jeap pas-backfill send \
   --file=backfill-job.yaml \
   --references-csv=references.csv \
   --job-id=88dbb65f-9634-4685-bc86-17b72d715d3e \
@@ -41,7 +41,7 @@ responses. On success, it prints the created job id status message and number of
 ## Read a Backfill Report
 
 ```bash
-echo "$PAS_ACCESS_TOKEN" | ./jeap pas-backfill report \
+echo "$PAS_ACCESS_TOKEN" | jeap pas-backfill report \
   --job-id=88dbb65f-9634-4685-bc86-17b72d715d3e \
   --url=https://pas.example.com/process-archive-service \
   --output=backfill-report.yaml

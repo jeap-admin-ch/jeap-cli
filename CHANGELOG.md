@@ -10,7 +10,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Changed
 
 - The CLI runs as a native binary on the host (Linux x86_64, macOS arm64) instead of a Docker container. The
-  launcher downloads and updates the binary and uses the system Java truststore.
+  launcher downloads and updates the binary and uses the system Java truststore. Re-run the installer to upgrade, see
+  [Upgrade from jEAP CLI 1.x to 2.x](docs/upgrade-to-2.md).
 - Migrations run the final `install` build themselves.
 
 ### Removed
