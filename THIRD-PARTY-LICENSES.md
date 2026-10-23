@@ -65,6 +65,16 @@ Apache License Version 2.0
  * jackson-databind - [tools.jackson.core:jackson-databind](https://github.com/FasterXML/jackson)
  * Jackson-dataformat-YAML - [tools.jackson.dataformat:jackson-dataformat-yaml](https://github.com/FasterXML/jackson-dataformats-text)
 
+BSD 2-Clause License
+-------------------------------
+
+ * commonmark-java core - [org.commonmark:commonmark](https://github.com/commonmark/commonmark-java/commonmark)
+ * commonmark-java extension for autolinking - [org.commonmark:commonmark-ext-autolink](https://github.com/commonmark/commonmark-java/commonmark-ext-autolink)
+ * commonmark-java extension for strikethrough - [org.commonmark:commonmark-ext-gfm-strikethrough](https://github.com/commonmark/commonmark-java/commonmark-ext-gfm-strikethrough)
+ * commonmark-java extension for tables - [org.commonmark:commonmark-ext-gfm-tables](https://github.com/commonmark/commonmark-java/commonmark-ext-gfm-tables)
+ * commonmark-java extension for adding id attributes to h tags - [org.commonmark:commonmark-ext-heading-anchor](https://github.com/commonmark/commonmark-java/commonmark-ext-heading-anchor)
+ * commonmark-java extension for YAML front matter - [org.commonmark:commonmark-ext-yaml-front-matter](https://github.com/commonmark/commonmark-java/commonmark-ext-yaml-front-matter)
+
 BSD License 3
 -------------------------------
 
@@ -118,6 +128,18 @@ MIT License
 
  * mockito-core - [org.mockito:mockito-core](https://github.com/mockito/mockito)
  * mockito-junit-jupiter - [org.mockito:mockito-junit-jupiter](https://github.com/mockito/mockito)
+ * autolink-java - [org.nibor.autolink:autolink](https://github.com/robinst/autolink-java)
  * Project Lombok - [org.projectlombok:lombok](https://projectlombok.org)
  * JUL to SLF4J bridge - [org.slf4j:jul-to-slf4j](http://www.slf4j.org)
  * SLF4J API Module - [org.slf4j:slf4j-api](http://www.slf4j.org)
+
+Bundled JavaScript Libraries
+-------------------------------
+
+The docs preview bundles these npm packages into the CLI (see
+[package.json](/jeap-cli/src/main/docs-preview/package.json) for version information):
+
+ * mermaid (MIT License) - [mermaid](https://github.com/mermaid-js/mermaid); `mermaid.min.js` includes mermaid's
+   own dependencies, e.g. d3, under the MIT, ISC, BSD-3-Clause, Apache-2.0 and Unlicense licenses
+ * @plantuml/core (MIT License) - [@plantuml/core](https://github.com/plantuml/plantuml)
+ * DOMPurify (Apache License Version 2.0, or Mozilla Public License 2.0) - [dompurify](https://github.com/cure53/DOMPurify)
