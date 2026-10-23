@@ -18,6 +18,8 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
+import static ch.admin.bit.jeap.cli.migration.Migrations.executeFinalVerification;
+
 @Slf4j
 @Component
 public class SpringBoot4Migration implements Migration {
@@ -51,6 +53,8 @@ public class SpringBoot4Migration implements Migration {
             throw new RuntimeException("Migration finished with step failures:\n - "
                     + String.join("\n - ", failedSteps));
         }
+
+        executeFinalVerification(root, processExecutor);
     }
 
     private List<Step> migrationSteps(Path root) {

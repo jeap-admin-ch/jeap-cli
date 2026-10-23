@@ -1,6 +1,7 @@
 package ch.admin.bit.jeap.cli.migration.process;
 
 import ch.admin.bit.jeap.cli.migration.Migration;
+import ch.admin.bit.jeap.cli.migration.step.maven.MavenCommandException;
 import ch.admin.bit.jeap.cli.migration.step.maven.MavenPlugin;
 import ch.admin.bit.jeap.cli.process.FakeProcessExecutor;
 import org.junit.jupiter.api.Test;
@@ -11,6 +12,8 @@ import java.nio.file.Path;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SpringBoot4MigrationTest {
@@ -52,9 +55,9 @@ class SpringBoot4MigrationTest {
         assertTrue(Files.readString(pomPath).contains("<version>9.1.0</version>"),
                 "Should keep the pinned internal jEAP parent when latest-version resolution fails");
 
-        // Then three Maven commands should have been executed
-        assertEquals(3, fakeExecutor.getExecutionCount(),
-                "Should have executed three Maven commands");
+        // Then four Maven commands should have been executed
+        assertEquals(4, fakeExecutor.getExecutionCount(),
+                "Should have executed four Maven commands");
 
         // First command: update the jEAP parent to the latest stable release
         FakeProcessExecutor.ExecutedCommand firstCommand = fakeExecutor.getExecutedCommands().get(0);
@@ -94,6 +97,50 @@ class SpringBoot4MigrationTest {
                 "Third command should run the OpenRewrite Spring Boot 4 recipe");
         assertEquals(tempDir, thirdCommand.workingDirectory(),
                 "Maven should execute in the project root directory");
+
+        // Last command: final verification build
+        FakeProcessExecutor.ExecutedCommand lastCommand = fakeExecutor.getLastExecutedCommand();
+        assertEquals(List.of("mvn", "-ntp", "install"), lastCommand.command(),
+                "Last command should be the final verification build");
+        assertEquals(tempDir, lastCommand.workingDirectory(),
+                "Final verification should run in the project root directory");
+    }
+
+    @Test
+    void testFinalVerificationIsSkippedWhenStepsFail() throws Exception {
+        // Given a project directory with a pom.xml
+        Files.writeString(tempDir.resolve("pom.xml"), minimalPom());
+
+        // And a fake process executor where the OpenRewrite migration fails
+        FakeProcessExecutor fakeExecutor = new FakeProcessExecutor((command, workingDirectory) ->
+                command.contains(MavenPlugin.OPENREWRITE.goal("run")) ? 1 : 0);
+
+        // When running the Spring Boot 4 migration, then it fails with the step failure
+        Migration migration = new SpringBoot4Migration(fakeExecutor);
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> migration.migrate(tempDir));
+        assertTrue(exception.getMessage().contains("Migration finished with step failures"),
+                "Should report the failed transformation steps");
+
+        // And the final verification build should not have been run
+        assertFalse(fakeExecutor.getExecutedCommands().stream()
+                        .anyMatch(executed -> executed.command().contains("install")),
+                "Final verification should not run when transformation steps failed");
+    }
+
+    @Test
+    void testFailingFinalVerificationFailsMigration() throws Exception {
+        // Given a project directory with a pom.xml
+        Files.writeString(tempDir.resolve("pom.xml"), minimalPom());
+
+        // And a fake process executor where only the final verification build fails
+        FakeProcessExecutor fakeExecutor = new FakeProcessExecutor((command, workingDirectory) ->
+                command.contains("install") ? 1 : 0);
+
+        // When running the Spring Boot 4 migration, then it fails because of the failing build
+        Migration migration = new SpringBoot4Migration(fakeExecutor);
+        assertThrows(MavenCommandException.class, () -> migration.migrate(tempDir));
+        assertEquals(List.of("mvn", "-ntp", "install"), fakeExecutor.getLastExecutedCommand().command(),
+                "Final verification should have been the last Maven invocation");
     }
 
 

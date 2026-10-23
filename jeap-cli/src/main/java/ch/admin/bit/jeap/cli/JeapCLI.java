@@ -14,8 +14,13 @@ public class JeapCLI {
 
 	static final Duration HTTP_CONNECT_TIMEOUT = Duration.ofSeconds(10);
 	static final Duration HTTP_READ_TIMEOUT = Duration.ofSeconds(60);
+	private static final String JLINE_DUMB_TERMINAL = "org.jline.terminal.dumb";
 
 	static void main(String[] args) {
+		// Suppress the jline warning when no terminal is attached, e.g. when the output is piped (https://github.com/jline/jline3/issues/291)
+		if (System.getProperty(JLINE_DUMB_TERMINAL) == null) {
+			System.setProperty(JLINE_DUMB_TERMINAL, "true");
+		}
 		ConfigurableApplicationContext context = SpringApplication.run(
 				JeapCLI.class, args.length == 0 ? new String[]{"help"} : args);
 		int exitCode = context.getBean(SanitizedShellApplicationRunner.class).exitCode();
