@@ -37,7 +37,7 @@ echo
 
 # Ensure dependencies
 command -v curl >/dev/null 2>&1 || { echo "curl is required but not installed"; exit 1; }
-command -v docker >/dev/null 2>&1 || { echo "docker is required but not installed"; exit 1; }
+command -v sha256sum >/dev/null 2>&1 || command -v shasum >/dev/null 2>&1 || { echo "sha256sum or shasum is required but not installed"; exit 1; }
 
 # For global installation: ensure sudo is available
 if [[ "${INSTALL_SCOPE}" == "global" ]]; then
@@ -87,10 +87,13 @@ fi
 echo
 echo "You can now run it using: ${SCRIPT_NAME} [args]"
 echo
-echo "Runtime state is persisted in:"
-echo "  GH auth / Copilot CLI: \$HOME/.config/gh      (override: JEAP_GH_CONFIG_DIR)"
-echo "  Maven cache:           \$HOME/.m2              (override: JEAP_M2_DIR)"
+echo "The launcher downloads the jEAP CLI binary to \$HOME/.jeap/bin and checks daily for updates."
+echo "Migrations additionally need a JDK, Maven (or the project's Maven wrapper) and git."
 echo
 
-# Run CLI to test the installation
-"${INSTALL_DIR}/${SCRIPT_NAME}" help
+# Run the CLI once to download the binary and test the installation
+if ! "${INSTALL_DIR}/${SCRIPT_NAME}" help; then
+  echo
+  echo "Warning: the jEAP CLI binary could not be downloaded or started. The launcher is installed;"
+  echo "run '${SCRIPT_NAME} help' again later, or set JEAP_CLI_VERBOSE=1 for details."
+fi
