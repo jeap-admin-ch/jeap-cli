@@ -20,11 +20,8 @@ This file provides guidance to coding agents when working with code in this repo
 # Run a single test method
 ./mvnw test -Dtest=SetJavaVersionTest#testUpdateExistingJavaVersion
 
-# Build local Docker image (requires GraalVM, builds native executable)
-./local-docker-image-build.sh
-
-# Run locally built Docker image
-JEAP_CLI_IMAGE=jeap-cli:latest ./jeap help
+# Run a locally built native executable through the launcher
+JEAP_CLI_BINARY=jeap-cli/target/jeap-cli ./jeap help
 ```
 
 ## Architecture
