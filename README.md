@@ -18,6 +18,12 @@ The launcher downloads the native jEAP CLI binary for your platform from the
 release and verifies the checksum of every download. If the check fails, for example when offline, the installed
 binary is used. To get a new version of the launcher itself, re-run the installer.
 
+Check the installation with:
+
+```bash
+jeap version
+```
+
 ### Requirements
 
 - Linux x86_64 or macOS arm64 (on Windows, use WSL)
@@ -28,8 +34,9 @@ binary is used. To get a new version of the launcher itself, re-run the installe
 ### Upgrading from 1.x
 
 Up to version 1.x the CLI ran in a Docker container. From version 2.0.0 on, it runs as a native binary on the host and
-the container image `ghcr.io/jeap-admin-ch/jeap-cli` is no longer published. Re-run the installer to get the new
-launcher. Docker is no longer needed to run the CLI, only for projects whose build uses Testcontainers.
+the container image `ghcr.io/jeap-admin-ch/jeap-cli` is no longer published. The 1.x launcher cannot run 2.x, so
+re-run the installer once to get the new launcher. See [Upgrade from jEAP CLI 1.x to 2.x](docs/upgrade-to-2.md) for
+the steps, what changes and troubleshooting.
 
 ## Configuration
 

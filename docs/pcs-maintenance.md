@@ -7,7 +7,7 @@ Pass the PCS OAuth access token with `--access-token` or pipe it to stdin. Pipin
 token out of shell history and process arguments:
 
 ```bash
-echo "$PCS_ACCESS_TOKEN" | ./jeap pcs reevaluate-relations \
+echo "$PCS_ACCESS_TOKEN" | jeap pcs reevaluate-relations \
   --file=reevaluation-job.yaml \
   --processes-csv=processes.csv \
   --url=https://pcs.example.com/process-context
@@ -23,7 +23,7 @@ piped safely.
 PCS URLs must use HTTPS. For a local PCS on a loopback address only, explicitly opt in to HTTP:
 
 ```bash
-echo "$PCS_ACCESS_TOKEN" | ./jeap pcs report \
+echo "$PCS_ACCESS_TOKEN" | jeap pcs report \
   --job-type=backfill \
   --job-id=88dbb65f-9634-4685-bc86-17b72d715d3e \
   --url=http://localhost:8080/process-context \
@@ -36,7 +36,7 @@ seconds, so an unavailable or stalled PCS does not block the CLI indefinitely.
 ## Reevaluate Relations
 
 ```bash
-echo "$PCS_ACCESS_TOKEN" | ./jeap pcs reevaluate-relations \
+echo "$PCS_ACCESS_TOKEN" | jeap pcs reevaluate-relations \
   --file=reevaluation-job.yaml \
   --url=https://pcs.example.com/process-context \
   --job-id=88dbb65f-9634-4685-bc86-17b72d715d3e
@@ -64,7 +64,7 @@ The request is sent with `PUT /api/reevaluation-jobs/{jobId}`.
 ## Backfill Process Data
 
 ```bash
-echo "$PCS_ACCESS_TOKEN" | ./jeap pcs backfill \
+echo "$PCS_ACCESS_TOKEN" | jeap pcs backfill \
   --file=backfill-job.yaml \
   --process-data-csv=process-data.csv \
   --url=https://pcs.example.com/process-context
@@ -105,7 +105,7 @@ CSV rows are grouped by `originProcessId`. A blank role becomes an omitted YAML 
 Supply either `--file` or `--relations-csv`; no metadata YAML is needed for CSV mode:
 
 ```bash
-echo "$PCS_ACCESS_TOKEN" | ./jeap pcs notify-relations \
+echo "$PCS_ACCESS_TOKEN" | jeap pcs notify-relations \
   --relations-csv=relations.csv \
   --url=https://pcs.example.com/process-context
 ```
@@ -134,7 +134,7 @@ responsibility; the CLI does not query the PCS database or select relations.
 Select the endpoint directly with `--job-type`:
 
 ```bash
-echo "$PCS_ACCESS_TOKEN" | ./jeap pcs report \
+echo "$PCS_ACCESS_TOKEN" | jeap pcs report \
   --job-type=backfill \
   --job-id=88dbb65f-9634-4685-bc86-17b72d715d3e \
   --url=https://pcs.example.com/process-context \
