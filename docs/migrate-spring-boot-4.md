@@ -45,6 +45,10 @@ The migration performs the following steps in order:
 8. **Remove redundant Spring Cloud dependency management** — removes an explicit `spring-cloud-dependencies` import
    because it is managed by the jEAP Spring Boot 4 parent
 
+9. **Verify the build** — builds the project with `install` (using `./mvnw` if present, otherwise `mvn`) when all
+   previous steps succeeded. A failing build fails the migration.
+
 ## Prerequisites
 
 - The project must be a Maven-based jEAP application
+- A JDK matching the project's Java version, Maven or the project's Maven Wrapper, and git on the host

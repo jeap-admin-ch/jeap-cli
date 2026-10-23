@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-10-23
+
+### Changed
+
+- The CLI runs as a native binary on the host (Linux x86_64, macOS arm64) instead of a Docker container. The
+  launcher downloads and updates the binary and uses the system Java truststore.
+- Migrations run the final `install` build themselves.
+
+### Removed
+
+- Container image, `JEAP_CLI_IMAGE`, `JEAP_CLI_NO_HOST_CERTS` and the container mount variables.
+
 ## [1.10.1] - 2026-08-31
 
 ### Fixed

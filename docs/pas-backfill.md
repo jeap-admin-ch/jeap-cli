@@ -4,18 +4,6 @@ The `pas-backfill` commands submit a backfill job YAML file to the PAS and read 
 require a PAS access token. Pass it with `--access-token` or pipe it to stdin. Piping is recommended because it avoids
 putting the token into the shell history.
 
-> **Local development note:** The CLI runs inside a Docker container, so `localhost` refers to the container, not your
-> host machine. To reach a service running locally on Linux, use the Docker bridge gateway IP `172.17.0.1` instead:
->
-> ```bash
-> echo "$PAS_ACCESS_TOKEN" | ./jeap pas-backfill send \
->   --file=backfill-job.yaml \
->   --job-id=88dbb65f-9634-4685-bc86-17b72d715d3e \
->   --url=http://172.17.0.1:8080/process-archive-service
-> ```
->
-> On macOS/Windows you can use `host.docker.internal` instead.
-
 ## Submit a Backfill Job
 
 ```bash
