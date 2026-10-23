@@ -6,44 +6,66 @@ essential tasks to facilitate efficient application development and maintenance.
 
 ## Installation
 
-You can install jEAP CLI directly from the command line using `curl`. This will download and install the launcher
-script system-wide under `/usr/local/bin/jeap`, making the `jeap` command available in your environment.
+You can install jEAP CLI directly from the command line using `curl`. The installer asks whether to install the
+`jeap` launcher system-wide under `/usr/local/bin` or for the current user under `~/.local/bin`.
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/jeap-admin-ch/jeap-cli/main/install.sh | bash
 ```
 
-The CLI will update itself regularly.
+The launcher downloads the native jEAP CLI binary for your platform from the
+[GitHub releases](https://github.com/jeap-admin-ch/jeap-cli/releases) to `~/.jeap/bin`, checks once a day for a new
+release and verifies the checksum of every download. If the check fails, for example when offline, the installed
+binary is used. To get a new version of the launcher itself, re-run the installer.
+
+Check the installation with:
+
+```bash
+jeap version
+```
 
 ### Requirements
 
-- A working local Docker environment
-- curl installed on your system
-- sudo installed if you want to install the CLI system-wide
-- Linux (tested on Ubuntu, works on most distributions) or Mac OS X
+- Linux x86_64 or macOS arm64 (on Windows, use WSL)
+- `curl` and `sha256sum` or `shasum`
+- `sudo` if you want to install the launcher system-wide
+- For migrations: a JDK matching the target Java version, Maven or the project's Maven Wrapper, and git
+
+### Upgrading from 1.x
+
+Up to version 1.x the CLI ran in a Docker container. From version 2.0.0 on, it runs as a native binary on the host and
+the container image `ghcr.io/jeap-admin-ch/jeap-cli` is no longer published. The 1.x launcher cannot run 2.x, so
+re-run the installer once to get the new launcher. See [Upgrade from jEAP CLI 1.x to 2.x](docs/upgrade-to-2.md) for
+the steps, what changes and troubleshooting.
 
 ## Configuration
 
-The CLI can be configured using environment variables:
+The launcher can be configured using environment variables:
 
-| Variable                 | Description                                                                       |
-|--------------------------|-----------------------------------------------------------------------------------|
-| `JEAP_CLI_IMAGE`         | Override the Docker image used (default: `ghcr.io/jeap-admin-ch/jeap-cli:latest`) |
-| `JEAP_CLI_VERBOSE`       | Enable verbose mode to show the Docker command being executed                     |
-| `JEAP_CLI_NO_HOST_CERTS` | Set to `1` to disable automatic mounting of host CA certificates                  |
+| Variable              | Purpose                                                                     |
+|-----------------------|-----------------------------------------------------------------------------|
+| `JEAP_CLI_BINARY`     | Run this binary instead of the managed one; skips download and update check |
+| `JEAP_CLI_VERSION`    | Pin a release version instead of the latest one                             |
+| `JEAP_CLI_VERBOSE`    | Print the resolved binary, truststore and final command to stderr           |
+| `JEAP_CLI_TRUSTSTORE` | Truststore file passed to the binary; takes precedence over auto-detection  |
 
-### Proxy and Certificate Support
+Maven, git and npm run as separate processes with your usual configuration (`~/.m2/settings.xml`, `MAVEN_OPTS`,
+`~/.gitconfig`, proxy environment variables, etc.).
 
-The CLI automatically:
+### Corporate Proxy and Certificates
 
-- Passes proxy environment variables (`HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY`) to the container
-- Mounts host CA certificates from `/etc/ssl/certs` for curl/wget to work behind corporate proxies
+A native binary does not read the operating system trust store. For its own HTTPS calls (e.g. the `pcs` and
+`pas-backfill` commands), the launcher passes the first readable Java truststore of the following list to the binary:
 
-To disable automatic certificate mounting use:
+1. `JEAP_CLI_TRUSTSTORE`, if set (the launcher fails if the file is not readable)
+2. `/etc/ssl/certs/java/cacerts` (Debian/Ubuntu)
+3. `/etc/pki/ca-trust/extracted/java/cacerts` (Fedora/RHEL)
+4. `$JAVA_HOME/lib/security/cacerts`
+5. On macOS: `$(/usr/libexec/java_home)/lib/security/cacerts`
 
-```bash
-JEAP_CLI_NO_HOST_CERTS=1 ./jeap <command>
-```
+This is the truststore Maven uses as well, so a corporate CA imported for Maven is also trusted by the CLI. If none
+is found, the binary uses its embedded default truststore. On macOS, the Keychain is not used; import the corporate CA
+into the JDK truststore or point `JEAP_CLI_TRUSTSTORE` to a truststore that contains it.
 
 ## Available Commands
 
@@ -57,8 +79,8 @@ JEAP_CLI_NO_HOST_CERTS=1 ./jeap <command>
 
 ## Building
 
-This section describes how to build the jEAP CLI from source. Note that for native image builds and local CLI docker
-image builds, a GraalVM installation is required. When using SDKMAN, you can install GraalVM with the following command:
+This section describes how to build the jEAP CLI from source. Note that for native image builds a GraalVM installation
+is required. When using SDKMAN, you can install GraalVM with the following command:
 
 ```bash
 sdk install java 25-graalce
@@ -84,34 +106,14 @@ The release version of the CLI is built as a native executable to improve startu
 ./mvnw clean package -Pnative
 ```
 
-### Local Docker Image Build
+### Running a Locally Built Binary
 
-The production CLI is deployed as a Docker image that includes the native executable and Maven for building projects.
-For testing the resulting image in the local development environment, use the provided build script that handles both
-the native build and Docker image creation.
-
-Make sure your JAVA_HOME environment variable is set to a GraalVM JDK. For example by using sdkman:
+To test a locally built native executable with the launcher, point `JEAP_CLI_BINARY` to it. The launcher then skips
+the download and update check:
 
 ```bash
-sdk use java 25-graalce
-
-```
-
-Then run the following command:
-
-```bash
-./local-docker-image-build.sh
-```
-
-The script automatically detects and handles:
-
-- Proxy configuration from environment variables (`HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY`)
-- Corporate CA certificates from the system trust store are passed to the CLI container
-
-The resulting Docker image will be tagged as `jeap-cli:latest`, and can be run using the following command:
-
-```bash
-export JEAP_CLI_IMAGE=jeap-cli:latest && ./jeap help
+./mvnw clean package -Pnative
+JEAP_CLI_BINARY=jeap-cli/target/jeap-cli ./jeap help
 ```
 
 ## Note

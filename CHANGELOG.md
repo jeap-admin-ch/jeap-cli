@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-10-23
+
+### Changed
+
+- The CLI runs as a native binary on the host (Linux x86_64, macOS arm64) instead of a Docker container. The
+  launcher downloads and updates the binary and uses the system Java truststore. Re-run the installer to upgrade, see
+  [Upgrade from jEAP CLI 1.x to 2.x](docs/upgrade-to-2.md).
+- Migrations run the final `install` build themselves.
+
+### Removed
+
+- Container image, `JEAP_CLI_IMAGE`, `JEAP_CLI_NO_HOST_CERTS` and the container mount variables.
+
+### Security
+
+- Updated Jackson to 3.1.8 to fix CVE-2026-89407, CVE-2026-68497 and CVE-2026-91776.
+
 ## [1.10.1] - 2026-08-31
 
 ### Fixed

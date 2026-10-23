@@ -40,6 +40,12 @@ These steps are executed if applicable to your project. Failures are logged as w
 7. **Update GitHub Actions Codebuild Image** - Updates jEAP codebuild images in GitHub Actions workflows to use tag
    `25-node-22`
 
+### Final Verification
+
+After all steps, the migration builds the project with `install` (using `./mvnw` if present, otherwise `mvn`). A
+failing build fails the migration.
+
 ## Prerequisites
 
 - The project must be a Maven-based jEAP application
+- A JDK 25, Maven or the project's Maven Wrapper, and git on the host
