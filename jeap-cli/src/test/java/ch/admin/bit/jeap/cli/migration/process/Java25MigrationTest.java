@@ -1,6 +1,7 @@
 package ch.admin.bit.jeap.cli.migration.process;
 
 import ch.admin.bit.jeap.cli.migration.Migration;
+import ch.admin.bit.jeap.cli.migration.step.maven.MavenCommandException;
 import ch.admin.bit.jeap.cli.migration.step.maven.MavenPlugin;
 import ch.admin.bit.jeap.cli.process.FakeProcessExecutor;
 import org.junit.jupiter.api.Test;
@@ -147,11 +148,11 @@ class Java25MigrationTest {
         Migration migration = new Java25Migration(fakeExecutor);
         migration.migrate(tempDir);
 
-        // Then Maven should have been executed with the correct arguments to update parent
-        assertEquals(1, fakeExecutor.getExecutionCount(),
-                "Should have executed one Maven command");
+        // Then Maven should have been executed twice: parent update and final verification
+        assertEquals(2, fakeExecutor.getExecutionCount(),
+                "Should have executed two Maven commands");
 
-        FakeProcessExecutor.ExecutedCommand executedCommand = fakeExecutor.getLastExecutedCommand();
+        FakeProcessExecutor.ExecutedCommand executedCommand = fakeExecutor.getExecutedCommands().getFirst();
         assertEquals(List.of("mvn",
                         "-ntp",
                         MavenPlugin.VERSIONS.goal("update-parent"),
@@ -162,6 +163,13 @@ class Java25MigrationTest {
                 "Should execute Maven with correct parent update arguments excluding qualified versions");
         assertEquals(tempDir, executedCommand.workingDirectory(),
                 "Maven should execute in the project root directory");
+
+        // And the final verification build should be the last Maven invocation
+        FakeProcessExecutor.ExecutedCommand verificationCommand = fakeExecutor.getLastExecutedCommand();
+        assertEquals(List.of("mvn", "-ntp", "install"), verificationCommand.command(),
+                "Last command should be the final verification build");
+        assertEquals(tempDir, verificationCommand.workingDirectory(),
+                "Final verification should run in the project root directory");
 
         // And the java.version property should be updated to 25
         String updatedContent = Files.readString(pomPath);
@@ -219,6 +227,35 @@ class Java25MigrationTest {
                 "GitHub Actions codebuild-image should be updated to jeap-codebuild-java:25-node-22");
         assertFalse(updatedWorkflowContent.contains("21-node-22"),
                 "Old codebuild-image tag should be replaced");
+    }
+
+    @Test
+    void testFailingFinalVerificationFailsMigration() throws Exception {
+        // Given a minimal project
+        Files.writeString(tempDir.resolve("pom.xml"), """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <project xmlns="http://maven.apache.org/POM/4.0.0">
+                    <modelVersion>4.0.0</modelVersion>
+                    <groupId>ch.admin.bit.jeap</groupId>
+                    <artifactId>test-project</artifactId>
+                    <version>1.0.0</version>
+                    <properties>
+                        <java.version>21</java.version>
+                    </properties>
+                </project>
+                """);
+
+        // And a fake process executor where only the final verification build fails
+        FakeProcessExecutor fakeExecutor = new FakeProcessExecutor((command, workingDirectory) ->
+                command.contains("install") ? 1 : 0);
+
+        // When running the Java 25 migration, then it fails because of the failing build
+        Migration migration = new Java25Migration(fakeExecutor);
+        MavenCommandException exception = assertThrows(MavenCommandException.class, () -> migration.migrate(tempDir));
+        assertTrue(exception.getMessage().contains("install"),
+                "Exception should name the failing verification command");
+        assertEquals(List.of("mvn", "-ntp", "install"), fakeExecutor.getLastExecutedCommand().command(),
+                "Final verification should have been the last Maven invocation");
     }
 
     private String getJavaVersion(Path pomPath) throws Exception {

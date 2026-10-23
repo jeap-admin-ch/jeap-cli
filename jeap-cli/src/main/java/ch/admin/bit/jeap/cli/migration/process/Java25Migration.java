@@ -16,6 +16,7 @@ import org.springframework.stereotype.Component;
 import java.nio.file.Path;
 import java.util.Map;
 
+import static ch.admin.bit.jeap.cli.migration.Migrations.executeFinalVerification;
 import static ch.admin.bit.jeap.cli.migration.Migrations.executeOptionalStep;
 import static ch.admin.bit.jeap.cli.migration.Migrations.executeStep;
 
@@ -61,5 +62,8 @@ public class Java25Migration implements Migration {
 
         // 8) Update .sdkmanrc to use Java 25
         executeOptionalStep(new UpdateSdkmanrc(root, JAVA_VERSION));
+
+        // 9) Verify that the migrated project builds
+        executeFinalVerification(root, processExecutor);
     }
 }
