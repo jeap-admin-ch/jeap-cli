@@ -62,7 +62,9 @@ Markdown with commonmark-java (`MarkdownRenderer`, `DiagramNodeRenderer` for dia
 and scripts live in `src/main/resources/docs-preview/`. The JavaScript libraries (mermaid, @plantuml/core, DOMPurify)
 are pinned in `src/main/docs-preview/package.json`; the Maven build installs them with npm (Node.js only inside
 `target/`) and copies them to `docs-preview/vendor/` on the class path. When changing them, update
-`package-lock.json` and `src/main/docs-preview/THIRD-PARTY-LICENSES.md`.
+`package-lock.json` and `src/main/docs-preview/THIRD-PARTY-LICENSES.md`; the open source compliance action appends
+that file to `THIRD-PARTY-LICENSES.md`. A local build after a POM change regenerates `THIRD-PARTY-LICENSES.md`
+without that section; don't commit that change.
 
 ### Adding New Migrations
 
