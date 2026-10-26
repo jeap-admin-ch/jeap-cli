@@ -14,6 +14,10 @@ inputs:
     description: 'Whether to commit and push changes (typically true only on main branch)'
     required: false
     default: 'false'
+  additional-licenses-file:
+    description: 'Markdown file appended to THIRD-PARTY-LICENSES.md, for dependencies Maven does not know (e.g. bundled npm packages)'
+    required: false
+    default: ''
   publiccode-parser-version:
     description: 'Version of publiccode-parser-go to use'
     required: false
@@ -37,6 +41,11 @@ runs:
         set -euo pipefail
         echo "Generating THIRD-PARTY-LICENSES.md"
         ./mvnw -B -ntp org.codehaus.mojo:license-maven-plugin:2.4.0:aggregate-add-third-party
+        ADDITIONAL="${{ inputs.additional-licenses-file }}"
+        if [ -n "${ADDITIONAL}" ]; then
+          echo "Appending ${ADDITIONAL}"
+          cat "${ADDITIONAL}" >> THIRD-PARTY-LICENSES.md
+        fi
 
     - name: Cache publiccode-parser-go
       uses: actions/cache@v4

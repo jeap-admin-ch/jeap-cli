@@ -89,9 +89,21 @@ jobs:
         with:
           project-version: ${{ steps.version.outputs.version }}
           commit-changes: ${{ github.ref == 'refs/heads/main' }}
+          additional-licenses-file: jeap-cli/src/main/docs-preview/THIRD-PARTY-LICENSES.md
 
       - name: Maven Build
         run: ./mvnw -B -ntp -Pnative package
+
+      # The binary must keep running on the Amazon Linux 2023 CodeBuild image (glibc 2.34) used by the docs preview workflow
+      - name: Check glibc Requirement
+        run: |
+          set -euo pipefail
+          REQUIRED="$(objdump -T jeap-cli/target/jeap-cli | grep -o 'GLIBC_[0-9.]*' | sort -u -V | tail -n 1)"
+          echo "Highest glibc symbol version: ${REQUIRED}"
+          if [ "$(printf '%s\n' "${REQUIRED#GLIBC_}" 2.34 | sort -V | tail -n 1)" != "2.34" ]; then
+            echo "Error: the binary needs ${REQUIRED}, more than GLIBC_2.34 of Amazon Linux 2023."
+            exit 1
+          fi
 
       - name: Prepare Binary
         run: |

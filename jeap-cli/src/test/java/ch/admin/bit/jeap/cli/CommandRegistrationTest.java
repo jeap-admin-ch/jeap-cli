@@ -47,7 +47,34 @@ class CommandRegistrationTest {
                 .containsText("pcs notify-relations")
                 .containsText("pcs report")
                 .containsText("PCS Maintenance")
+                .containsText("docs preview")
+                .containsText("docs build")
+                .containsText("Docs")
                 .containsText("AVAILABLE COMMANDS");
+    }
+
+    @Test
+    void docsPreviewHelpShowsOptions() throws Exception {
+        ShellScreen screen = client.sendCommand("help docs preview");
+
+        ShellAssertions.assertThat(screen)
+                .containsText("docs preview")
+                .containsText("--source")
+                .containsText("--port")
+                .containsText("--no-browser")
+                .containsText("--title");
+    }
+
+    @Test
+    void docsBuildHelpShowsOptions() throws Exception {
+        ShellScreen screen = client.sendCommand("help docs build");
+
+        ShellAssertions.assertThat(screen)
+                .containsText("docs build")
+                .containsText("--source")
+                .containsText("--output")
+                .containsText("--title")
+                .containsText("--banner");
     }
 
     @Test

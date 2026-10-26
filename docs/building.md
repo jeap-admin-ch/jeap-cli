@@ -12,6 +12,9 @@ This page describes how to build the jEAP CLI from source.
   sdk use java 25-graalce
   ```
 
+- `npm` on the `PATH`: every build fetches the JavaScript libraries bundled for the [docs preview](docs-preview.md)
+  with `npm ci`, honouring `https_proxy`/`no_proxy`.
+
 ## Non-native Build for Java Hotspot
 
 To create a standard Java executable JAR file, run the following command. The JAR file will be generated in the
