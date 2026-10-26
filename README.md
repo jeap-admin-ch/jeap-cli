@@ -22,6 +22,8 @@ corporate proxies. Coming from 1.x? See [Upgrade from jEAP CLI 1.x to 2.x](docs/
 | [pas-backfill send](docs/pas-backfill.md)              | Submit a backfill job to the PAS            |
 | [pas-backfill report](docs/pas-backfill.md)            | Read the backfill job report from the PAS   |
 | [pcs maintenance](docs/pcs-maintenance.md)             | Submit PCS maintenance jobs and get reports |
+| [docs preview](docs/docs-preview.md)                   | Preview the Markdown docs in the browser    |
+| [docs build](docs/docs-preview.md#build-a-static-site) | Write the Markdown docs as a static site    |
 
 ## Building
 
