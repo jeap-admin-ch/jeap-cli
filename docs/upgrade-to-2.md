@@ -86,7 +86,7 @@ docker rmi $(docker images -q ghcr.io/jeap-admin-ch/jeap-cli)
 
 The binary makes HTTPS calls of its own for the `pcs` and `pas-backfill` commands. It does not read the operating
 system trust store or the macOS Keychain. Instead, the launcher passes it the Java truststore that Maven uses as well
-(see [Corporate Proxy and Certificates](../README.md#corporate-proxy-and-certificates)). If you work behind a
+(see [Corporate Proxy and Certificates](installation.md#corporate-proxy-and-certificates)). If you work behind a
 TLS-intercepting corporate proxy, the corporate CA must be in that truststore. If Maven already works behind the proxy,
 this is usually the case.
 
