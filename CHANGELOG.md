@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.0] - 2026-10-23
+## [2.0.0] - 2026-10-27
 
 ### Changed
 
@@ -21,7 +21,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Security
 
-- Updated Jackson to 3.1.8 to fix CVE-2026-89407, CVE-2026-68497 and CVE-2026-91776.
+- Updated the jEAP parent to 11.8.1 (Spring Boot 4.1.2, Jackson 3.2.3), which fixes CVE-2026-89407, CVE-2026-68497
+  and CVE-2026-91776.
 
 ## [1.10.1] - 2026-08-31
 
