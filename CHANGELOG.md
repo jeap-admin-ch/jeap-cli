@@ -13,6 +13,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   launcher downloads and updates the binary and uses the system Java truststore. Re-run the installer to upgrade, see
   [Upgrade from jEAP CLI 1.x to 2.x](docs/upgrade-to-2.md).
 - Migrations run the final `install` build themselves.
+- Moved the installation, configuration and build documentation from the README to `docs/`.
 
 ### Removed
 
