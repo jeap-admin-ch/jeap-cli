@@ -1,0 +1,47 @@
+version: 2
+
+# All updates of all ecosystems in one pull request. dependabot-auto-bump.yml turns every
+# Dependabot pull request into a patch release and dependabot-auto-merge.yml merges it once the
+# build is green, so a pull request per ecosystem would mean more releases, and the pull requests
+# would compete for the same version number and the same place at the top of the CHANGELOG.
+multi-ecosystem-groups:
+  dependencies:
+    schedule:
+      interval: "daily"
+    labels:
+      - "dependencies"
+
+updates:
+  - package-ecosystem: "maven"
+    directory: "/"
+    patterns:
+      - "*"
+    multi-ecosystem-group: "dependencies"
+    # New releases of third-party libraries are held back for a few days, so a broken or
+    # compromised release is likely withdrawn before it is merged and released here without a
+    # review. jEAP's own artifacts are taken right away: they are released deliberately, often to
+    # fix a vulnerability.
+    cooldown:
+      default-days: 3
+      exclude:
+        - "ch.admin*"
+
+  # The JavaScript libraries bundled into the docs preview.
+  - package-ecosystem: "npm"
+    directory: "/jeap-cli/src/main/docs-preview"
+    patterns:
+      - "*"
+    multi-ecosystem-group: "dependencies"
+    cooldown:
+      default-days: 3
+
+  # "/" covers the workflows only; the composite action uses actions of its own.
+  - package-ecosystem: "github-actions"
+    directories:
+      - "/"
+      - "/.github/actions/opensource-compliance"
+    patterns:
+      - "*"
+    multi-ecosystem-group: "dependencies"
+    cooldown:
+      default-days: 3

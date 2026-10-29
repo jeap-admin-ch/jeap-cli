@@ -1,0 +1,195 @@
+name: Dependabot auto version bump
+
+on:
+  # pull_request_target instead of pull_request: Dependabot-triggered pull_request runs only receive Dependabot
+  # secrets, so BOT_APP_ID/BOT_APP_PRIVATE_KEY would be empty. pull_request_target runs in the base-repo context with
+  # Actions secrets; the job below is gated to Dependabot pull requests from this repository.
+  # synchronize/reopened: Dependabot force-pushes onto an open pull request when it adds newer versions or rebases it,
+  # which drops the version bump commit, so the bump has to be made again.
+  pull_request_target:
+    types: [ opened, synchronize, reopened ]
+  workflow_dispatch:
+
+concurrency:
+  group: dependabot-bump-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+# Writes go through the GitHub App token: a push with the GITHUB_TOKEN would not trigger build-and-release.yml.
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  bump:
+    # The commit step pushes with the GitHub App token, so the resulting synchronize event is attributed to the app's
+    # bot actor, not dependabot[bot]; this condition already keeps that push from retriggering this workflow.
+    # A manual run is restricted to Dependabot branches, to redo a bump that failed.
+    if: >-
+      (github.event_name == 'workflow_dispatch' && startsWith(github.ref_name, 'dependabot/')) ||
+      (github.actor == 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    env:
+      BRANCH: ${{ github.event.pull_request.head.ref || github.ref_name }}
+      BASE_REF: ${{ github.event.pull_request.base.ref || github.event.repository.default_branch }}
+    steps:
+      - name: Generate App token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_APP_PRIVATE_KEY }}
+
+      # The Maven steps below run plugins from the updated POMs, so the token is not stored in the git config; only the
+      # push step gets it.
+      - name: Checkout PR branch
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.ref }}
+          # The release tags decide which versions are already taken, see "Determine the version to release".
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Java
+        uses: actions/setup-java@v6
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+          cache: maven
+
+      # Reads the updated dependencies from Dependabot's commit message for the CHANGELOG entry. Not every pull request
+      # shape is supported by the action, so the CHANGELOG step falls back to the pull request body.
+      - name: Fetch Dependabot metadata
+        id: metadata
+        if: github.event_name == 'pull_request_target'
+        continue-on-error: true
+        uses: dependabot/fetch-metadata@v3
+
+      # Which version to release cannot be answered from this branch alone. The target is derived from the base branch
+      # and from the release tags, not from this branch's own copy of the version: a pull request merged in the
+      # meantime may have released the version this branch would otherwise take.
+      - name: Determine the version to release
+        id: check
+        run: |
+          set -euo pipefail
+          pom_version() {
+            python3 -c 'import sys, xml.etree.ElementTree as E; print(E.parse(sys.stdin).getroot().find("{http://maven.apache.org/POM/4.0.0}version").text.removesuffix("-SNAPSHOT"))'
+          }
+          version_gt() { [ "$1" != "$2" ] && [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | tail -n 1)" = "$1" ]; }
+          released() { git rev-parse -q --verify "refs/tags/$1" >/dev/null; }
+
+          git fetch --tags --force origin "${BASE_REF}"
+          BASE_VERSION="$(git show "origin/${BASE_REF}:pom.xml" | pom_version)"
+          CURRENT_VERSION="$(pom_version < pom.xml)"
+          echo "base=${BASE_VERSION} current=${CURRENT_VERSION}"
+
+          # A bump this workflow already made, and that nothing has released in the meantime, is left alone: re-running
+          # must not keep raising the version.
+          if version_gt "${CURRENT_VERSION}" "${BASE_VERSION}" && ! released "${CURRENT_VERSION}"; then
+            echo "Version ${CURRENT_VERSION} is already bumped ahead of ${BASE_REF} and unreleased, nothing to do."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          FROM="${BASE_VERSION}"
+          if version_gt "${CURRENT_VERSION}" "${BASE_VERSION}"; then
+            FROM="${CURRENT_VERSION}"
+          fi
+          IFS=. read -r MAJOR MINOR PATCH <<< "${FROM}"
+          # A dependency update carries no API change, so patch is the honest semver step.
+          PATCH=$((PATCH + 1))
+          while released "${MAJOR}.${MINOR}.${PATCH}"; do
+            PATCH=$((PATCH + 1))
+          done
+          echo "Bumping to ${MAJOR}.${MINOR}.${PATCH}"
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+          echo "new=${MAJOR}.${MINOR}.${PATCH}" >> "$GITHUB_OUTPUT"
+
+      - name: Bump patch version
+        if: steps.check.outputs.skip != 'true'
+        env:
+          NEW: ${{ steps.check.outputs.new }}
+        run: |
+          set -euo pipefail
+          TODAY="$(date +%Y-%m-%d)"
+          ./mvnw -B -ntp -q versions:set -DnewVersion="${NEW}-SNAPSHOT" -DgenerateBackupPoms=false
+          sed -i "s/^softwareVersion: .*/softwareVersion: ${NEW}/" publiccode.yml
+          sed -i "s/^releaseDate: .*/releaseDate: ${TODAY}/" publiccode.yml
+
+      - name: Add CHANGELOG entry
+        if: steps.check.outputs.skip != 'true'
+        env:
+          NEW: ${{ steps.check.outputs.new }}
+          UPDATED_DEPENDENCIES: ${{ steps.metadata.outputs.updated-dependencies-json }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if [ -n "${PR_NUMBER}" ]; then
+            gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" --jq '.body // ""' > "${RUNNER_TEMP}/pr-body.md"
+          else
+            : > "${RUNNER_TEMP}/pr-body.md"
+          fi
+          python3 - "${RUNNER_TEMP}/pr-body.md" <<'PYTHON'
+          import datetime, json, os, re, sys
+
+          def from_metadata():
+              raw = os.environ.get("UPDATED_DEPENDENCIES") or "[]"
+              try:
+                  deps = json.loads(raw)
+              except ValueError:
+                  return []
+              return [(d["dependencyName"], d.get("prevVersion"), d.get("newVersion")) for d in deps if d.get("dependencyName")]
+
+          def from_body(path):
+              body = open(path, encoding="utf-8").read()
+              # The table of grouped pull requests: | [name](link) | `from` | `to` |
+              found = re.findall(r"^\|\s*\[?([^\]|]+?)\]?(?:\([^)]*\))?\s*\|\s*`([^`]+)`\s*\|\s*`([^`]+)`\s*\|", body, re.M)
+              # The headings of single and multi-directory pull requests: Updates `name` from 1.0 to 1.1
+              found += re.findall(r"Updates `([^`]+)` from (\S+?) to (\S+?)(?:\s|$)", body)
+              return found
+
+          updates = from_metadata() or from_body(sys.argv[1])
+          lines, seen = [], set()
+          for name, old, new in updates:
+              name = name.strip()
+              if name in seen:
+                  continue
+              seen.add(name)
+              lines.append(f"- Updated `{name}` from {old} to {new}." if old and new else f"- Updated `{name}`.")
+          if not lines:
+              lines = ["- Updated dependencies."]
+
+          today = datetime.date.today().isoformat()
+          entry = f"## [{os.environ['NEW']}] - {today}\n\n### Changed\n\n" + "\n".join(lines) + "\n\n"
+          changelog = open("CHANGELOG.md", encoding="utf-8").read()
+          index = changelog.index("\n## [") + 1
+          open("CHANGELOG.md", "w", encoding="utf-8").write(changelog[:index] + entry + changelog[index:])
+          print(entry)
+          PYTHON
+
+      # The same command as the license step of the open source compliance action, so the license changes are part of
+      # the reviewed pull request instead of a commit on main after the merge.
+      - name: Regenerate THIRD-PARTY-LICENSES.md
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          set -euo pipefail
+          ./mvnw -B -ntp -q org.codehaus.mojo:license-maven-plugin:2.4.0:aggregate-add-third-party
+          cat jeap-cli/src/main/docs-preview/THIRD-PARTY-LICENSES.md >> THIRD-PARTY-LICENSES.md
+
+      # [dependabot skip] lets Dependabot keep rebasing the pull request and force-push over this commit. Without it,
+      # Dependabot stops updating a pull request once someone else pushed to it, and a pull request in conflict with
+      # main (another version bump merged in the meantime) would stay stuck instead of being bumped again.
+      - name: Commit and push
+        if: steps.check.outputs.skip != 'true'
+        env:
+          NEW: ${{ steps.check.outputs.new }}
+          TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add pom.xml jeap-cli/pom.xml publiccode.yml CHANGELOG.md THIRD-PARTY-LICENSES.md
+          git commit -m "Bump version to ${NEW} [dependabot skip]"
+          # No rebase on failure: a rejected push means Dependabot force-pushed meanwhile, and the run for that push
+          # makes the bump.
+          git push "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/${BRANCH}"
