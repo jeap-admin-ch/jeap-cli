@@ -10,7 +10,12 @@ Apache License Version 2.0
 
  * ClassMate - [com.fasterxml:classmate](https://github.com/FasterXML/java-classmate)
  * Jackson-annotations - [com.fasterxml.jackson.core:jackson-annotations](https://github.com/FasterXML/jackson)
+ * Gson - [com.google.code.gson:gson](https://github.com/google/gson)
+ * error-prone annotations - [com.google.errorprone:error_prone_annotations](https://errorprone.info/error_prone_annotations)
  * json-path - [com.jayway.jsonpath:json-path](https://github.com/jayway/JsonPath)
+ * Playwright - Driver - [com.microsoft.playwright:driver](https://github.com/microsoft/playwright-java/driver)
+ * Playwright - Node.js For All Platforms - [com.microsoft.playwright:driver-bundle](https://github.com/microsoft/playwright-java/driver-bundle)
+ * Playwright - Main Library - [com.microsoft.playwright:playwright](https://github.com/microsoft/playwright-java/playwright)
  * JSON library from Android SDK - [com.vaadin.external.google:android-json](http://developer.android.com/sdk)
  * Apache Commons Codec - [commons-codec:commons-codec](https://commons.apache.org/proper/commons-codec/)
  * Apache Commons IO - [commons-io:commons-io](https://commons.apache.org/proper/commons-io/)
