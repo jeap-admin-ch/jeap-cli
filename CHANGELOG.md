@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.3] - 2026-10-29
+
+### Changed
+
+- Updated `org.apache.commons:commons-csv` from 1.10.0 to 1.14.1.
+- Updated `org.commonmark:commonmark` from 0.28.0 to 0.31.0.
+- Updated `org.commonmark:commonmark-ext-gfm-tables` from 0.28.0 to 0.31.0.
+- Updated `org.commonmark:commonmark-ext-gfm-strikethrough` from 0.28.0 to 0.31.0.
+- Updated `org.commonmark:commonmark-ext-autolink` from 0.28.0 to 0.31.0.
+- Updated `org.commonmark:commonmark-ext-yaml-front-matter` from 0.28.0 to 0.31.0.
+- Updated `org.commonmark:commonmark-ext-heading-anchor` from 0.28.0 to 0.31.0.
+- Updated `org.apache.maven:apache-maven` from 3.9.16 to 3.10.0.
+- Updated `actions/cache` from v4 and v5 to v6.
+- Updated `actions/checkout` from v4 to v7.
+- Updated `actions/upload-artifact` from v4 to v7.
+- Updated `actions/download-artifact` from v4 to v8.
+- Updated `softprops/action-gh-release` from v2 to v3.
+- Updated `mermaid` from 11.17.2 to 12.2.0.
+
+### Fixed
+
+- The CHANGELOG entry of a Dependabot pull request also lists the npm and GitHub Actions updates.
+- The open source compliance check no longer fails when `publiccode.yml` and `THIRD-PARTY-LICENSES.md` both change.
+
 ## [2.1.2] - 2026-10-29
 
 ### Changed
