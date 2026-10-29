@@ -70,6 +70,7 @@ jobs:
         with:
           version: ${{ steps.bump.outputs.version }}
           pull-request: ${{ github.event.pull_request.number }}
+          base-ref: ${{ github.event.pull_request.base.ref }}
 
       # The same action as in build-and-release.yml: updates publiccode.yml and THIRD-PARTY-LICENSES.md, so the license
       # changes are part of the reviewed pull request instead of a commit on main after the merge
