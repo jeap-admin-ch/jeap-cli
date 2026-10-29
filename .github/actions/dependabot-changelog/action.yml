@@ -1,0 +1,45 @@
+name: 'Dependabot CHANGELOG Entry'
+description: 'Adds a CHANGELOG.md entry listing the updates of a Dependabot pull request'
+author: 'jEAP'
+
+inputs:
+  version:
+    description: 'Version of the new entry'
+    required: true
+  pull-request:
+    description: 'Number of the Dependabot pull request'
+    required: true
+  github-token:
+    description: 'Token that can read the pull request'
+    required: false
+    default: ${{ github.token }}
+  changelog:
+    description: 'Path of the CHANGELOG'
+    required: false
+    default: 'CHANGELOG.md'
+
+runs:
+  using: 'composite'
+  steps:
+    # The updates are read from the pull request body: the table of grouped pull requests
+    # (| [name](link) | `from` | `to` |) or the sentence of a single update (Bumps [name](link) from a to b.).
+    - name: Add CHANGELOG entry
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        VERSION: ${{ inputs.version }}
+        PR_NUMBER: ${{ inputs.pull-request }}
+        CHANGELOG: ${{ inputs.changelog }}
+      run: |
+        set -euo pipefail
+        gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" --jq '.body // ""' > "${RUNNER_TEMP}/pr-body.md"
+        # shellcheck disable=SC2016 # the backticks are Markdown, not command substitution
+        UPDATES="$(sed -nE \
+          -e 's/^\| *\[([^]]+)\]\([^)]*\) *\| *`([^`]+)` *\| *`([^`]+)` *\|.*$/- Updated `\1` from \2 to \3./p' \
+          -e 's/^Bumps \[([^]]+)\]\([^)]*\) from ([^ ]+) to ([^ ]+)\.$/- Updated `\1` from \2 to \3./p' \
+          "${RUNNER_TEMP}/pr-body.md" | awk '!seen[$0]++')"
+        ENTRY="$(printf '## [%s] - %s\n\n### Changed\n\n%s\n' "${VERSION}" "$(date +%Y-%m-%d)" "${UPDATES:-- Updated dependencies.}")"
+        echo "${ENTRY}"
+        ENTRY="${ENTRY}" awk 'BEGIN { done = 0 } /^## \[/ && !done { print ENVIRON["ENTRY"] "\n"; done = 1 } { print }' \
+          "${CHANGELOG}" > "${CHANGELOG}.new"
+        mv "${CHANGELOG}.new" "${CHANGELOG}"
