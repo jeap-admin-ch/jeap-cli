@@ -35,6 +35,25 @@ digraph G {
 }
 ```
 
+## PlantUML with a theme
+
+```plantuml
+@startuml
+!theme plain
+Writer -> Browser : read
+@enduml
+```
+
+## A diagram with a script link
+
+The preview removes the `javascript:` link from the rendered SVG.
+
+```dot
+digraph G {
+  link [label="Click me", href="javascript:alert(1)"];
+}
+```
+
 ## A broken diagram
 
 ```plantuml

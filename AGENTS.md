@@ -20,6 +20,9 @@ This file provides guidance to coding agents when working with code in this repo
 # Run a single test method
 ./mvnw test -Dtest=SetJavaVersionTest#testUpdateExistingJavaVersion
 
+# Include the docs preview browser test (needs an installed Chrome)
+./mvnw test -Ddocs.browser-test=true
+
 # Run a locally built native executable through the launcher
 JEAP_CLI_BINARY=jeap-cli/target/jeap-cli ./jeap help
 ```
@@ -77,6 +80,11 @@ without that section; don't commit that change.
 
 Tests use JUnit 5 with `@TempDir` for file system testing. For process execution tests, use `FakeProcessExecutor` to
 mock external commands.
+
+`DocsPreviewBrowserTest` renders the diagrams of the sample docs (`src/test/resources/docs-preview/sample-docs`) in
+Chrome with Playwright, so it covers the bundled JavaScript libraries, which the other docs tests don't execute. It
+only runs with `-Ddocs.browser-test=true`, which the Linux build in `build-and-release.yml` sets. When a library is
+added or `preview.js` loads it in a new way, extend the sample diagrams and the test so the new path is rendered.
 
 ## Versioning & Conventions
 
