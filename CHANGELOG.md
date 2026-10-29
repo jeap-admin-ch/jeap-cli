@@ -10,7 +10,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Changed
 
 - The build renders the docs preview diagrams in Chrome (`DocsPreviewBrowserTest`), so an update of mermaid,
-  @plantuml/core or DOMPurify that breaks the preview fails the build instead of being merged and released.
+  @plantuml/core or DOMPurify that breaks the preview fails the build instead of being merged and released. The build
+  needs an installed Chrome.
 
 ## [2.1.3] - 2026-10-29
 

@@ -13,7 +13,6 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
@@ -30,10 +29,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * {@code @plantuml/core} with Viz.js and the PlantUML themes, DOMPurify) that breaks the preview fails the build. The
  * other docs tests only see the HTML placeholders and the files, not whether the libraries still render them.
  * <p>
- * Needs an installed Chrome, so it only runs with {@code -Ddocs.browser-test=true}, which the Linux build in
- * {@code build-and-release.yml} sets.
+ * Uses the installed Chrome, so the build needs one; the GitHub runners have it.
  */
-@EnabledIfSystemProperty(named = "docs.browser-test", matches = "true")
 class DocsPreviewBrowserTest {
 
     private static final String ASSETS_PATH = "/" + DocsAssets.ASSETS_FOLDER;
