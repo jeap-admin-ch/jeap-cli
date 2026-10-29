@@ -137,7 +137,12 @@ runs:
 
         if [ -n "$STATUS" ]; then
           echo "files_updated=true" >> $GITHUB_OUTPUT
-          echo "files_changed=$STATUS" >> $GITHUB_OUTPUT
+          # Multi-line syntax: with both files changed, the status has one line per file
+          {
+            echo "files_changed<<EOF"
+            echo "$STATUS"
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
           echo "Files have been modified and need to be committed."
         else
           echo "files_updated=false" >> $GITHUB_OUTPUT
