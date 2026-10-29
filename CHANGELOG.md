@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.1] - 2026-10-29
+
+### Security
+
+- Updated `jeap-internal-spring-boot-parent` from 11.8.1 to 11.9.1 to fix a vulnerability in `tools.jackson.core:jackson-databind`
+  (3.2.3 → 3.2.4): CVE-2026-110879, CVE-2026-54512 (SNYK-JAVA-TOOLSJACKSONCORE-21761838).
+
 ## [2.1.0] - 2026-10-27
 
 ### Added
