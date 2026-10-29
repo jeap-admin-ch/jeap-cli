@@ -2,11 +2,18 @@ name: Build and release CLI
 
 on:
   push:
-    branches: [ "main", "feature/**" ]
+    # dependabot/**: dependabot-auto-merge.yml merges a Dependabot pull request after this workflow succeeded on it
+    branches: [ "main", "feature/**", "dependabot/**" ]
   workflow_dispatch:
 
 permissions:
   contents: write
+
+# On a branch, a new push supersedes the running build, e.g. when dependabot-auto-bump.yml pushes the version bump onto
+# a Dependabot branch. Every push to main is a release and runs to completion in its own group.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref == 'refs/heads/main' && github.sha || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   linux:
@@ -51,9 +58,10 @@ jobs:
           ./mvnw -q versions:set -DnewVersion="$REL" -DgenerateBackupPoms=false
           echo "version=$REL" >> $GITHUB_OUTPUT
 
-      # Fail if a git tag for this version already exists
+      # Fail if a git tag for this version already exists. Also on Dependabot branches, which are merged and released
+      # automatically: a taken version has to stop the merge, not the release after it.
       - name: Ensure Version Tag does not Already Exist
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/dependabot/')
         run: |
           set -euo pipefail
           git fetch --tags --force
