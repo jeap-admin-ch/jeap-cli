@@ -2,8 +2,8 @@ name: Dependabot auto-merge
 
 # Merges a Dependabot pull request once build-and-release.yml succeeded on its head commit. A workflow_run instead of
 # native auto-merge with required status checks: a required check in the main ruleset would also block the open
-# source compliance commit the main build pushes directly. This file always runs from main, so a pull request cannot
-# change what it checks.
+# source compliance commit the main build pushes directly with the GITHUB_TOKEN. This file always runs from main, so a
+# pull request cannot change what it checks.
 on:
   workflow_run:
     workflows: [ "Build and release CLI" ]
@@ -13,8 +13,7 @@ concurrency:
   group: dependabot-merge-${{ github.event.workflow_run.head_branch }}
 
 # Writes go through the GitHub App token: a merge with the GITHUB_TOKEN would not trigger the release build on main.
-permissions:
-  contents: read
+permissions: { }
 
 jobs:
   merge:
@@ -32,15 +31,10 @@ jobs:
           app-id: ${{ secrets.BOT_APP_ID }}
           private-key: ${{ secrets.BOT_APP_PRIVATE_KEY }}
 
-      - name: Checkout
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
-      # Every check that fails ends the job without an error: the pull request is simply not merged (yet).
-      - name: Check the pull request
-        id: check
+      # A taken version needs no check here: the build fails on a Dependabot branch whose version is already tagged.
+      # --match-head-commit refuses the merge if the pull request moved on since the build. Rebase is the only merge
+      # method the repository allows.
+      - name: Merge if the head is the version bump
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
@@ -48,43 +42,16 @@ jobs:
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           set -euo pipefail
-          pom_version() {
-            python3 -c 'import sys, xml.etree.ElementTree as E; print(E.parse(sys.stdin).getroot().find("{http://maven.apache.org/POM/4.0.0}version").text.removesuffix("-SNAPSHOT"))'
-          }
-          version_gt() { [ "$1" != "$2" ] && [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | tail -n 1)" = "$1" ]; }
-          skip() { echo "Not merging: $1"; echo "merge=false" >> "$GITHUB_OUTPUT"; exit 0; }
-
-          PR="$(gh pr list --repo "${GITHUB_REPOSITORY}" --head "${HEAD_BRANCH}" --state open \
-            --json number,author,headRefOid,baseRefName --jq '.[0] // empty')"
-          [ -n "${PR}" ] || skip "no open pull request for ${HEAD_BRANCH}"
-          NUMBER="$(jq -r .number <<< "${PR}")"
-          echo "number=${NUMBER}" >> "$GITHUB_OUTPUT"
-          [ "$(jq -r .author.login <<< "${PR}")" = "app/dependabot" ] || skip "#${NUMBER} is not opened by Dependabot"
-          [ "$(jq -r .baseRefName <<< "${PR}")" = "${DEFAULT_BRANCH}" ] || skip "#${NUMBER} does not target ${DEFAULT_BRANCH}"
-          # The green build must be the build of the current head, not of a commit pushed over since
-          [ "$(jq -r .headRefOid <<< "${PR}")" = "${HEAD_SHA}" ] || skip "#${NUMBER} has moved on from ${HEAD_SHA}"
-
-          # Only a head made by dependabot-auto-bump.yml is releasable; the build of Dependabot's own commit is not
-          git fetch --tags --force origin "${HEAD_SHA}" "${DEFAULT_BRANCH}"
-          SUBJECT="$(git log -1 --format=%s "${HEAD_SHA}")"
-          [[ "${SUBJECT}" == "Bump version to "* ]] || skip "the head of #${NUMBER} is not a version bump: ${SUBJECT}"
-
-          HEAD_VERSION="$(git show "${HEAD_SHA}:pom.xml" | pom_version)"
-          BASE_VERSION="$(git show "origin/${DEFAULT_BRANCH}:pom.xml" | pom_version)"
-          if git rev-parse -q --verify "refs/tags/${HEAD_VERSION}" >/dev/null || ! version_gt "${HEAD_VERSION}" "${BASE_VERSION}"; then
-            # main moved on without a conflict that would have made Dependabot rebase: ask for a rebase, which drops
-            # the bump commit and makes dependabot-auto-bump.yml bump again
-            gh pr comment "${NUMBER}" --repo "${GITHUB_REPOSITORY}" --body "@dependabot rebase"
-            skip "version ${HEAD_VERSION} of #${NUMBER} is taken (${DEFAULT_BRANCH} is at ${BASE_VERSION}), requested a rebase"
+          NUMBER="$(gh pr list --repo "${GITHUB_REPOSITORY}" --head "${HEAD_BRANCH}" --base "${DEFAULT_BRANCH}" \
+            --author 'app/dependabot' --state open --json number --jq '.[0].number // empty')"
+          if [ -z "${NUMBER}" ]; then
+            echo "No open Dependabot pull request for ${HEAD_BRANCH}."
+            exit 0
           fi
-          echo "merge=true" >> "$GITHUB_OUTPUT"
-
-      # Rebase is the only merge method the repository allows. --match-head-commit refuses the merge if the pull
-      # request moved after the checks above.
-      - name: Merge
-        if: steps.check.outputs.merge == 'true'
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-          NUMBER: ${{ steps.check.outputs.number }}
-          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
-        run: gh pr merge "${NUMBER}" --repo "${GITHUB_REPOSITORY}" --rebase --match-head-commit "${HEAD_SHA}"
+          # The build of Dependabot's own commit is green too, but that commit carries no version bump
+          SUBJECT="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${HEAD_SHA}" --jq '.commit.message | split("\n")[0]')"
+          if [[ "${SUBJECT}" != "Bump version to "* ]]; then
+            echo "Not merging #${NUMBER}: ${HEAD_SHA} is not a version bump (${SUBJECT})."
+            exit 0
+          fi
+          gh pr merge "${NUMBER}" --repo "${GITHUB_REPOSITORY}" --rebase --match-head-commit "${HEAD_SHA}"
