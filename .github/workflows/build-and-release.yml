@@ -99,10 +99,8 @@ jobs:
           commit-changes: ${{ github.ref == 'refs/heads/main' }}
           additional-licenses-file: jeap-cli/src/main/docs-preview/THIRD-PARTY-LICENSES.md
 
-      # docs.browser-test: renders the docs preview diagrams in the runner's Chrome (DocsPreviewBrowserTest), so a
-      # Dependabot update of the bundled JavaScript libraries that breaks them fails here. Once, on Linux only.
       - name: Maven Build
-        run: ./mvnw -B -ntp -Pnative package -Ddocs.browser-test=true
+        run: ./mvnw -B -ntp -Pnative package
 
       # The binary must keep running on the Amazon Linux 2023 CodeBuild image (glibc 2.34) used by the docs preview workflow
       - name: Check glibc Requirement
