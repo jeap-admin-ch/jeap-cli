@@ -48,7 +48,7 @@ runs:
         fi
 
     - name: Cache publiccode-parser-go
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: ${{ runner.tool_cache }}/publiccode-parser-go
         key: publiccode-parser-go-v${{ inputs.publiccode-parser-version }}-linux-x86_64

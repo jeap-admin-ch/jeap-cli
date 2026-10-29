@@ -7,6 +7,6 @@
   "dependencies": {
     "@plantuml/core": "1.2026.9",
     "dompurify": "3.4.17",
-    "mermaid": "11.17.2"
+    "mermaid": "12.2.0"
   }
 }
