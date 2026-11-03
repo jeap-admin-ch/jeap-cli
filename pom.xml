@@ -27,7 +27,7 @@
     <parent>
         <groupId>ch.admin.bit.jeap</groupId>
         <artifactId>jeap-internal-spring-boot-parent</artifactId>
-        <version>11.9.2</version>
+        <version>11.11.0</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
 
