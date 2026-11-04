@@ -18,7 +18,7 @@
 
 	<properties>
         <start-class>ch.admin.bit.jeap.cli.JeapCLI</start-class>
-        <commonmark.version>0.31.0</commonmark.version>
+        <commonmark.version>0.32.0</commonmark.version>
         <playwright.version>1.64.0</playwright.version>
         <docs-preview.npm.directory>${project.build.directory}/docs-preview-npm</docs-preview.npm.directory>
 	</properties>
