@@ -5,7 +5,7 @@
   "description": "JavaScript libraries bundled into the jEAP CLI for the documentation preview",
   "license": "Apache-2.0",
   "dependencies": {
-    "@plantuml/core": "1.2026.9",
+    "@plantuml/core": "1.2026.10",
     "dompurify": "3.4.17",
     "mermaid": "12.3.0"
   }
