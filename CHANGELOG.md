@@ -10,7 +10,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Changed
 
 - Based the build on `spring-boot-starter-parent` instead of `jeap-internal-spring-boot-parent`, so the CLI no longer
-  depends on jEAP parent releases on Maven Central. The CLI itself is unchanged.
+  depends on jEAP parent releases on Maven Central.
+- Updated Spring Boot from 4.1.2 to 4.2.0.
 
 ## [2.1.15] - 2026-11-25
 

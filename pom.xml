@@ -31,7 +31,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.1.2</version>
+        <version>4.2.0</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
 
@@ -45,9 +45,6 @@
     <properties>
         <java.version>25</java.version>
         <spring-shell.version>4.0.4</spring-shell.version>
-        <!-- Newer than the versions managed by Spring Boot, to fix vulnerabilities in Jackson -->
-        <jackson-bom.version>3.2.4</jackson-bom.version>
-        <jackson-2-bom.version>2.22.4</jackson-2-bom.version>
         <!-- Not managed by Spring Boot -->
         <exec-maven-plugin.version>3.7.0</exec-maven-plugin.version>
         <!-- Open source compliance -->
@@ -62,7 +59,6 @@
     </modules>
 
     <build>
-        <finalName>${project.artifactId}</finalName>
         <pluginManagement>
             <plugins>
                 <!-- Add license entry to jar manifest -->
