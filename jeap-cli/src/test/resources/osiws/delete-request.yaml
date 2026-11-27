@@ -1,0 +1,5 @@
+indexType: DecreeDocument
+indexMajorVersion: 1
+originReferences:
+  - id: "12345"
+  - id: "67890"

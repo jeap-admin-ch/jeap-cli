@@ -39,7 +39,38 @@ class SanitizedShellApplicationRunnerTest {
 
         assertThat(runner.exitCode()).isEqualTo(2);
         assertThat(stderr.toString(StandardCharsets.UTF_8))
-                .contains("Unknown PCS command 'typo'");
+                .contains("Unknown PCS command 'typo'. Expected reevaluate-relations, backfill, notify-relations or report.");
+    }
+
+    @Test
+    void rejectsUnknownOsiwsCommandWithoutCallingShell() throws Exception {
+        ByteArrayOutputStream stderr = new ByteArrayOutputStream();
+        ShellRunner shellRunner = args -> {
+            throw new AssertionError("Shell must not be called");
+        };
+        SanitizedShellApplicationRunner runner = new SanitizedShellApplicationRunner(
+                shellRunner, successfulParser(), new PrintStream(stderr, true, StandardCharsets.UTF_8));
+
+        runner.run(new DefaultApplicationArguments("osiws", "rollback"));
+
+        assertThat(runner.exitCode()).isEqualTo(2);
+        assertThat(stderr.toString(StandardCharsets.UTF_8))
+                .contains("Unknown osiws command 'rollback'. Expected upsert, delete or report.");
+    }
+
+    @Test
+    void leavesErrorOutputOfOsiwsCommandsToTheirExceptionMapper() throws Exception {
+        ByteArrayOutputStream stderr = new ByteArrayOutputStream();
+        ShellRunner shellRunner = args -> {
+            throw new CommandExecutionException("Unable to execute osiws report", new IllegalStateException("failed"));
+        };
+        SanitizedShellApplicationRunner runner = new SanitizedShellApplicationRunner(
+                shellRunner, successfulParser(), new PrintStream(stderr, true, StandardCharsets.UTF_8));
+
+        runner.run(new DefaultApplicationArguments("osiws", "report"));
+
+        assertThat(runner.exitCode()).isEqualTo(1);
+        assertThat(stderr.size()).isZero();
     }
 
     @Test

@@ -1,0 +1,44 @@
+indexType: DecreeDocument
+job-id: 88dbb65f-9634-4685-bc86-17b72d715d3e
+job-type: delete
+job-state: open
+started: '2026-10-23T11:00:00Z'
+report-created: '2026-10-23T11:00:01Z'
+started-by-name: Example Operator
+started-by-ext-id: '123456'
+summary:
+  total-references: 2
+  materialized-tasks: 2
+  open: 2
+  succeeded: 0
+  failed: 0
+  indexing-disabled: 0
+originReferences:
+  - task-id: c19c04b7-cb22-4323-ad5d-fab96f6bfec8
+    id: '12345'
+    state: open
+    targets:
+      - index-major-version: 1
+        physical-index: jme_decree_document_v1-000001
+      - index-major-version: 2
+        physical-index: jme_decree_document_v2-000001
+  - task-id: baecb7d7-5ef4-4b10-bf7f-8a5ca5147c2c
+    id: '67890'
+    state: open
+    targets:
+      - index-major-version: 1
+        physical-index: jme_decree_document_v1-000001
+      - index-major-version: 2
+        physical-index: jme_decree_document_v2-000001
+page:
+  limit: 100
+  returned: 2
+  next-cursor: null
+target-selection: all
+targets:
+  - index-major-version: 1
+    physical-index: jme_decree_document_v1-000001
+    rollover: not-detected
+  - index-major-version: 2
+    physical-index: jme_decree_document_v2-000001
+    rollover: not-detected

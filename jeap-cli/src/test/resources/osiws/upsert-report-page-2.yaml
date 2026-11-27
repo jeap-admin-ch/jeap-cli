@@ -1,0 +1,38 @@
+message:
+  messageName: JmeDecreeDocumentCreatedEvent
+  topicName: jme-decree-document-created
+operation:
+  indexType: DecreeDocument
+  indexOperation: UPSERT
+  indexMajorVersion: 1
+job-id: 88dbb65f-9634-4685-bc86-17b72d715d3e
+job-type: upsert
+job-state: completed
+started: '2026-10-23T09:00:00Z'
+report-created: '2026-10-23T09:01:06Z'
+started-by-name: Example Operator
+started-by-ext-id: '123456'
+summary:
+  total-references: 3
+  materialized-tasks: 3
+  open: 0
+  succeeded: 2
+  failed: 1
+  indexing-disabled: 0
+originReferences:
+  - task-id: 9a7c1d52-3f0e-4b8a-a1d6-2c5e8f7b9d01
+    id: '007'
+    state: succeeded
+    actual-index-major-version: 1
+    actual-index-minor-version: 3
+page:
+  limit: 2
+  returned: 1
+  next-cursor: null
+target:
+  selection: explicit
+  index-major-version: 1
+  physical-index: jme_decree_document_v1-000001
+  rollover: not-detected
+job-result: partially-succeeded
+completed: '2026-10-23T09:01:00Z'
