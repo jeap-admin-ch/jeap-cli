@@ -10,6 +10,8 @@ import org.springframework.stereotype.Component;
 
 import java.io.PrintStream;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -18,8 +20,11 @@ class SanitizedShellApplicationRunner implements ApplicationRunner {
 
     private static final Pattern TOKEN_WITH_EQUALS = Pattern.compile("(--access-token=)[^\\s]+", Pattern.CASE_INSENSITIVE);
     private static final Pattern TOKEN_WITH_SPACE = Pattern.compile("(--access-token\\s+)[^\\s]+", Pattern.CASE_INSENSITIVE);
-    private static final Set<String> PCS_COMMANDS = Set.of(
-            "reevaluate-relations", "backfill", "notify-relations", "report", "--help", "-h");
+    private static final Set<String> HELP_OPTIONS = Set.of("--help", "-h");
+    // Command groups whose exit status exception mapper prints the error itself
+    private static final Map<String, CommandGroup> COMMAND_GROUPS = Map.of(
+            "pcs", new CommandGroup("PCS", List.of("reevaluate-relations", "backfill", "notify-relations", "report")),
+            "osiws", new CommandGroup("osiws", List.of("upsert", "delete", "report")));
 
     private final ShellRunner shellRunner;
     private final CommandParser commandParser;
@@ -40,9 +45,11 @@ class SanitizedShellApplicationRunner implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) throws Exception {
         String[] sourceArgs = args.getSourceArgs();
-        if (sourceArgs.length > 1 && "pcs".equals(sourceArgs[0]) && !PCS_COMMANDS.contains(sourceArgs[1])) {
-            stderr.println("Error: Unknown PCS command '" + sourceArgs[1]
-                    + "'. Expected reevaluate-relations, backfill, notify-relations or report.");
+        CommandGroup group = sourceArgs.length > 0 ? COMMAND_GROUPS.get(sourceArgs[0]) : null;
+        if (group != null && sourceArgs.length > 1 && !group.commands().contains(sourceArgs[1])
+                && !HELP_OPTIONS.contains(sourceArgs[1])) {
+            stderr.println("Error: Unknown " + group.label() + " command '" + sourceArgs[1] + "'. Expected "
+                    + group.expectedCommands() + ".");
             exitCode = 2;
             return;
         }
@@ -54,7 +61,7 @@ class SanitizedShellApplicationRunner implements ApplicationRunner {
             shellRunner.run(quotedArgs);
         } catch (CommandExecutionException e) {
             exitCode = e.getExitCode() == 0 ? 1 : Math.abs(e.getExitCode());
-            if (!"pcs".equals(sourceArgs[0])) {
+            if (group == null) {
                 stderr.println("Error: " + redactAccessToken(rootCause(e).getMessage()));
             }
         } catch (Exception e) {
@@ -96,5 +103,12 @@ class SanitizedShellApplicationRunner implements ApplicationRunner {
             result = result.getCause();
         }
         return result;
+    }
+
+    private record CommandGroup(String label, List<String> commands) {
+
+        String expectedCommands() {
+            return String.join(", ", commands.subList(0, commands.size() - 1)) + " or " + commands.getLast();
+        }
     }
 }

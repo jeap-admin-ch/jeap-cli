@@ -1,0 +1,11 @@
+message:
+  messageName: JmeDecreeDocumentCreatedEvent
+  topicName: jme-decree-document-created
+operation:
+  indexType: DecreeDocument
+  indexOperation: UPSERT
+  indexMajorVersion: 1
+originReferences:
+  - id: "12345"
+    version: "17"
+  - id: "67890"

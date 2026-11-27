@@ -3,6 +3,7 @@ package ch.admin.bit.jeap.cli;
 import ch.admin.bit.jeap.cli.backfill.PasBackfillService;
 import ch.admin.bit.jeap.cli.migration.process.Java25Migration;
 import ch.admin.bit.jeap.cli.migration.process.SpringBoot4Migration;
+import ch.admin.bit.jeap.cli.osiws.OsiwsMaintenanceService;
 import ch.admin.bit.jeap.cli.pcs.PcsMaintenanceService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +33,9 @@ class CommandRegistrationTest {
     @MockitoBean
     PcsMaintenanceService pcsMaintenanceService;
 
+    @MockitoBean
+    OsiwsMaintenanceService osiwsMaintenanceService;
+
     @Test
     void test() throws Exception {
         ShellScreen screen = client.sendCommand("help");
@@ -47,6 +51,10 @@ class CommandRegistrationTest {
                 .containsText("pcs notify-relations")
                 .containsText("pcs report")
                 .containsText("PCS Maintenance")
+                .containsText("osiws upsert")
+                .containsText("osiws delete")
+                .containsText("osiws report")
+                .containsText("OpenSearch Index Writer Maintenance")
                 .containsText("docs preview")
                 .containsText("docs build")
                 .containsText("Docs")
@@ -126,6 +134,41 @@ class CommandRegistrationTest {
                 .containsText("processcontextjob:write")
                 .containsText("--file")
                 .containsText("--relations-csv");
+    }
+
+    @Test
+    void osiwsSubmissionHelpShowsInputsAndCreateRoles() throws Exception {
+        ShellScreen upsert = client.sendCommand("help osiws upsert");
+        ShellAssertions.assertThat(upsert)
+                .containsText("upsertjob#create")
+                .containsText("--file")
+                .containsText("--csv")
+                .containsText("--job-id")
+                .containsText("--url")
+                .containsText("--access-token")
+                .containsText("--allow-insecure-http");
+
+        ShellScreen delete = client.sendCommand("help osiws delete");
+        ShellAssertions.assertThat(delete)
+                .containsText("deletejob#create")
+                .containsText("--file")
+                .containsText("--csv");
+    }
+
+    @Test
+    void osiwsReportHelpShowsTypesPagingOutputAndReadRole() throws Exception {
+        ShellScreen screen = client.sendCommand("help osiws report");
+
+        ShellAssertions.assertThat(screen)
+                .containsText("jobreport#read")
+                .containsText("--job-type")
+                .containsText("upsert or delete")
+                .containsText("--job-id")
+                .containsText("--output")
+                .containsText("--page-size")
+                .containsText("--url")
+                .containsText("--access-token")
+                .containsText("--allow-insecure-http");
     }
 
     @Test
